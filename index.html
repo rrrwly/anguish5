@@ -3,132 +3,114 @@
 <head>
   <meta charset="UTF-8" />
   <title>defeat</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <!-- Pixel font ONLY for entry text -->
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
   <style>
-    /* Layout (same as your original positioning) */
-    body {
-      margin: 0;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      height: 95vh;
-      background: #fff;
-      color: #000;
-      font-family: Arial, sans-serif;
+    /* Original centered layout */
+    body{
+      margin:0;
+      display:flex; flex-direction:column; justify-content:center; align-items:center;
+      height:95vh; background:#fff; color:#000; font-family:Arial, sans-serif;
       animation: fadeIn 2s ease-in;
-      cursor: none;        /* hide system cursor */
-      overflow: hidden;    /* for drops */
+      cursor:none;
+      overflow:hidden;
     }
-    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes fadeIn{from{opacity:0}to{opacity:1}}
 
-    /* Knife drip spawn offsets (edit these if you need to nudge) */
-    :root {
-      --tip-x: 0.1px;  /* + right / - left */
-      --tip-y: 10px;   /* + down  / - up  */
-      --knife-angle: -18deg;
+    /* One-pass marquee container (starts like before, then expands at end) */
+    .marquee-container{
+      width:35%;                /* initial visible width (like before) */
+      overflow:hidden;
+      box-sizing:border-box;
+      font-size:14px;
+      transition: width 600ms ease; /* expands at the end so all names fit */
+      white-space:nowrap;
     }
-
-    /* Wider marquee like you asked */
-    .marquee-container {
-      width: 35%;
-      overflow: hidden;
-      box-sizing: border-box;
-      font-size: 14px;
-      white-space: nowrap;
+    .marquee-track{
+      will-change: transform;
     }
-
-    span {
-      font-size: 14px;
-      text-align: center;
-      margin-top: 10px;
-      opacity: 0.85;
+    .marquee-text{
+      display:inline-block;
+      white-space:nowrap;
     }
 
-    /* Content is blurred until click (prevents flicker) */
-    .site {
-      filter: blur(16px);
-      opacity: 0.85;
-      transition: filter 1200ms ease, opacity 1200ms ease;
-      pointer-events: none;
-    }
-    .site.clear {
-      filter: blur(0);
-      opacity: 1;
-      pointer-events: auto;
-    }
+    span{font-size:14px; text-align:center; margin-top:10px; opacity:.85}
+
+    /* Content stays blurred until click (prevents flicker) */
+    .site{ filter:blur(16px); opacity:.85; transition:filter 1200ms ease, opacity 1200ms ease; pointer-events:none; }
+    .site.clear{ filter:blur(0); opacity:1; pointer-events:auto; }
 
     /* Music controls */
-    audio { display: none; }
-    .music-controls {
-      position: fixed;
-      bottom: 15px; right: 20px;
-      display: flex; align-items: center; gap: 8px;
-      opacity: 0; visibility: hidden; transition: all 0.5s ease;
-      background: rgba(0, 0, 0, 0.05);
-      padding: 6px 10px; border-radius: 8px;
-      border: 1px solid rgba(0,0,0,0.2);
-      z-index: 10000; font-size: 12px;
+    audio{display:none}
+    .music-controls{
+      position:fixed; bottom:15px; right:20px; display:flex; align-items:center; gap:8px;
+      opacity:0; visibility:hidden; transition:all .5s ease; background:rgba(0,0,0,.05);
+      padding:6px 10px; border-radius:8px; border:1px solid rgba(0,0,0,.2); z-index:10000; font-size:12px;
     }
-    .music-controls.show { opacity: 0.9; visibility: visible; }
-    #volume-slider { width: 100px; cursor: pointer; accent-color: #000; }
-    #song-name { font-size: 12px; opacity: 0.8; }
+    .music-controls.show{opacity:.9; visibility:visible}
+    #volume-slider{width:100px; cursor:pointer; accent-color:#000}
+    #song-name{font-size:12px; opacity:.8}
 
-    /* Entry overlay (no bubble) */
-    .gate {
-      position: fixed; inset: 0;
-      background: rgba(255, 255, 255, 0.6);
-      z-index: 100001;
-      display: grid; place-items: center;
-      cursor: none;
-      transition: opacity 0.8s ease, visibility 0.8s ease;
-      opacity: 1; visibility: visible;
+    /* Overlay */
+    .gate{
+      position:fixed; inset:0; background:rgba(255,255,255,.6);
+      z-index:100001; display:grid; place-items:center; cursor:none;
+      transition:opacity .8s ease, visibility .8s ease; opacity:1; visibility:visible;
     }
-    .gate.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
-    .gate-text {
-      font-family: 'Press Start 2P', monospace;
-      font-size: 14px; letter-spacing: 0.08em;
-      color: #000; opacity: 0.85; user-select: none; text-align: center;
-      animation: pulse 1.4s infinite;
+    .gate.hidden{opacity:0; visibility:hidden; pointer-events:none}
+    .gate-text{
+      font-family:'Press Start 2P',monospace; font-size:14px; letter-spacing:.08em;
+      color:#000; opacity:.85; user-select:none; text-align:center; animation:pulse 1.4s infinite;
     }
-    @keyframes pulse { 0%{opacity:.6}50%{opacity:1}100%{opacity:.6} }
+    @keyframes pulse{0%{opacity:.6}50%{opacity:1}100%{opacity:.6}}
 
-    /* Knife cursor + drips */
-    .knife {
-      position: fixed;
-      width: 70px; height: 70px;
-      left: 0; top: 0;
-      background-size: contain; background-repeat: no-repeat; background-position: center;
-      image-rendering: pixelated; transform-origin: 15px 15px;
-      pointer-events: none; z-index: 100002;
+    /* Knife + drips */
+    :root{ --tip-x:10px; --tip-y:30px; --knife-angle:-18deg }
+    .knife{
+  position:fixed;
+  width:70px; height:70px; /* smaller knife size */
+  left:0; top:0;
+  background-size:contain;
+  background-repeat:no-repeat;
+  background-position:center;
+  image-rendering:pixelated;
+  transform-origin:15px 15px; /* slightly adjusted pivot */
+  pointer-events:none;
+  z-index:100002;
+}
+
+    .drop{
+      position:fixed; width:6px; height:6px; border-radius:50%;
+      background:rgb(223,30,99); pointer-events:none; z-index:9999;
+      animation:fall var(--dur) linear forwards; box-shadow:0 0 6px rgba(223,30,99,.4);
     }
-    .drop {
-      position: fixed; width: 6px; height: 6px; border-radius: 50%;
-      background: rgb(223, 30, 99); pointer-events: none; z-index: 9999;
-      animation: fall var(--dur) linear forwards; box-shadow: 0 0 6px rgba(223,30,99,0.4);
-    }
-    @keyframes fall { 0%{opacity:1; transform:translateY(0)} 100%{opacity:0; transform:translateY(160px)} }
+    @keyframes fall{0%{opacity:1; transform:translateY(0)}100%{opacity:0; transform:translateY(160px)}}
   </style>
 </head>
 <body>
   <!-- Clean knife shown immediately -->
   <div class="knife" id="knife"></div>
 
-  <!-- Your centered content (use local GIF to avoid hotlink breaks) -->
+  <!-- Centered content -->
   <div id="site" class="site">
-    <img src="/assets/undefeated.gif" alt="undefeated gif">
+    <img src="https://cdn.discordapp.com/attachments/1117356079051964446/1424607076667097158/ZBzQzuI.gif?ex=68e4903a&is=68e33eba&hm=f6b692f1947a4c61c562f084f1f3ee21650238600aa532817291698c95683db1&" alt="undefeated gif">
     <div>defeat</div>
+
+    <!-- One-pass marquee -->
     <div class="marquee-container" id="names">
-      <div id="track"><span id="namesText">jord ryan matt saph maly tyler</span></div>
+      <div class="marquee-track" id="track">
+        <span class="marquee-text" id="namesText">
+          jord ryan matt saph maly tyler
+        </span>
+      </div>
     </div>
+
     <span>uneasy lies the head that wears the crown</span>
   </div>
 
   <!-- Background music -->
   <audio id="bg-music" loop playsinline preload="auto">
-    <source src="/assets/what-you-had-capo.mp3" type="audio/mpeg">
+    <source src="assets/what-you-had-capo.mp3" type="audio/mpeg">
   </audio>
   <div id="music-controls" class="music-controls">
     <span id="song-name">🎵 Now Playing: What You Had – Capo</span>
@@ -136,6 +118,150 @@
     <input id="volume-slider" type="range" min="0" max="1" step="0.01" value="1">
   </div>
 
-  <!-- Stab SFX -->
+  <!-- Stab sound -->
   <audio id="sfx-stab" preload="auto">
-    <source src="/assets/stab.mp3" type="audio/m
+    <source src="assets/stab.mp3" type="audio/mpeg">
+  </audio>
+
+  <!-- Overlay -->
+  <div id="gate" class="gate" aria-label="Click to enter">
+    <div class="gate-text">CLICK TO ENTER</div>
+  </div>
+
+  <script>
+    /* === Music fade-in (4s) === */
+    const music=document.getElementById('bg-music');
+    const slider=document.getElementById('volume-slider');
+    const controls=document.getElementById('music-controls');
+    const SONG_TITLE="What You Had – Capo";
+    let fadeInt=null;
+
+    function playFade(){
+      music.muted=false;
+      const target=Number(slider.value||1);
+      music.volume=0;
+      music.play().then(()=>{
+        // 80 steps × 50ms = 4s fade-in
+        let v=0, step=target/80;
+        fadeInt=setInterval(()=>{
+          v+=step;
+          if(v>=target){ music.volume=target; clearInterval(fadeInt); }
+          else music.volume=v;
+        },50);
+      }).catch(err=>console.error(err));
+    }
+    music.addEventListener('playing',()=>{
+      controls.classList.add('show');
+      document.getElementById('song-name').textContent="🎵 Now Playing: "+SONG_TITLE;
+    });
+    slider.addEventListener('input',()=>{ music.volume=Number(slider.value); });
+
+    /* === Knife setup === */
+    const gate=document.getElementById('gate');
+    const site=document.getElementById('site');
+    const knifeEl=document.getElementById('knife');
+    const CLEAN_KNIFE_URL="assets/knife-clean.png";
+    const BLOODY_KNIFE_URL="assets/knife.png";
+    knifeEl.style.backgroundImage=`url(${CLEAN_KNIFE_URL})`;
+    knifeEl.style.transform=`rotate(var(--knife-angle))`;
+
+    let mx=innerWidth/2, my=innerHeight/2;
+    function placeKnife(){ knifeEl.style.left=(mx-56)+"px"; knifeEl.style.top=(my-56)+"px"; }
+    placeKnife();
+    addEventListener('mousemove', e=>{ mx=e.clientX; my=e.clientY; placeKnife(); }, {passive:true});
+
+    function startDrips(){
+      const DRIP_INTERVAL_MS=260, DRIP_JITTER=3;
+      const tipX=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--tip-x'))||0.01;
+      const tipY=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--tip-y'))||0.01;
+      setInterval(()=>{
+        const d=document.createElement('div'); d.className='drop';
+        const size=3+Math.random()*3, dur=1.4+Math.random()*2.0;
+        d.style.width=d.style.height=size+'px';
+        d.style.setProperty('--dur', dur+'s');
+        d.style.opacity=0.6+Math.random()*0.35;
+        const x=mx+tipX+(Math.random()*DRIP_JITTER-DRIP_JITTER/2);
+        const y=my+tipY+(Math.random()*DRIP_JITTER-DRIP_JITTER/2);
+        d.style.left=x+'px'; d.style.top=y+'px';
+        document.body.appendChild(d);
+        setTimeout(()=>d.remove(), dur*1000);
+      }, DRIP_INTERVAL_MS);
+    }
+
+    /* === Stab sound: swap knife & start drips AT PLAY === */
+    const stab=document.getElementById('sfx-stab');
+    function stabAndSwapNow(){
+      return new Promise((resolve)=>{
+        const onPlay=()=>{
+          knifeEl.style.backgroundImage=`url(${BLOODY_KNIFE_URL})`;
+          startDrips();
+          stab.removeEventListener('play', onPlay);
+          resolve();
+        };
+        stab.addEventListener('play', onPlay, {once:true});
+        stab.currentTime=0;
+        stab.play().catch(()=>{
+          knifeEl.style.backgroundImage=`url(${BLOODY_KNIFE_URL})`;
+          startDrips();
+          resolve();
+        });
+      });
+    }
+
+    /* === One-pass marquee logic === */
+    function onePassMarquee(){
+      const container = document.getElementById('names');
+      const track     = document.getElementById('track');
+      const textEl    = document.getElementById('namesText');
+
+      // Ensure measurements after fonts render
+      requestAnimationFrame(()=>{
+        const cW = container.clientWidth;
+        const tW = textEl.offsetWidth;
+
+        let x = cW;              // start just off the right edge
+        const speed = 50;        // pixels per second (tweak if you want)
+        let last = performance.now();
+        let running = true;
+
+        function step(ts){
+          if(!running) return;
+          const dt = (ts - last) / 1000; last = ts;
+          x -= speed * dt;
+          if (x <= 0){
+            // Reached the final position (all names aligned to left)
+            x = 0;
+            track.style.transform = `translateX(${x}px)`;
+            running = false;
+
+            // Expand the container so ALL names are visible and stop moving
+            const maxWidth = Math.floor(window.innerWidth * 0.9); // safety cap
+            const finalWidth = Math.min(tW + 4, maxWidth);
+            container.style.width = finalWidth + 'px';
+            container.style.overflow = 'visible';
+            return;
+          }
+          track.style.transform = `translateX(${x}px)`;
+          requestAnimationFrame(step);
+        }
+
+        // Initialize position and start the single pass
+        track.style.transform = `translateX(${x}px)`;
+        requestAnimationFrame(step);
+      });
+    }
+
+    /* === Entry click === */
+    gate.addEventListener('click', async ()=>{
+      playFade();
+      await stabAndSwapNow();
+      site.classList.add('clear');
+      gate.classList.add('hidden');
+      onePassMarquee();  // start the single-pass scroll on enter
+    });
+
+    // If you want it to run even before clicking (blurred), uncomment:
+    // onePassMarquee();
+  </script>
+</body>
+</html>
