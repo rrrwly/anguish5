@@ -21,17 +21,13 @@
       --knife-angle: -18deg;
     }
 
-    /* Continuous marquee */
+    /* One-pass marquee container */
     .marquee-container{
       width:35%; overflow:hidden; box-sizing:border-box; font-size:14px; white-space:nowrap;
+      transition:width 600ms ease;
     }
-    .marquee-track{
-      display:inline-block; will-change: transform;
-    }
-    .marquee-text{
-      display:inline-block; padding-right:48px; /* gap between repeats */
-      white-space:nowrap;
-    }
+    .marquee-track{ will-change: transform; }
+    .marquee-text{ display:inline-block; white-space:nowrap; }
 
     span{ font-size:14px; text-align:center; margin-top:10px; opacity:.85; }
 
@@ -39,7 +35,7 @@
     .site{ filter:blur(16px); opacity:.85; transition:filter 1200ms ease, opacity 1200ms ease; pointer-events:none; }
     .site.clear{ filter:blur(0); opacity:1; pointer-events:auto; }
 
-    /* Music UI */
+    /* Music UI (kept minimal, hidden until playing) */
     audio{ display:none; }
     .music-controls{
       position:fixed; bottom:15px; right:20px; display:flex; align-items:center; gap:8px;
@@ -86,10 +82,9 @@
     <img src="/assets/undefeated.gif" alt="undefeated gif">
     <div>defeat</div>
 
-    <!-- Continuous marquee -->
+    <!-- One-pass marquee -->
     <div class="marquee-container" id="names">
       <div class="marquee-track" id="track">
-        <!-- We’ll duplicate this text in JS to create an infinite loop -->
         <span class="marquee-text" id="namesText">jord ryan matt saph maly tyler</span>
       </div>
     </div>
@@ -99,7 +94,9 @@
 
   <!-- Background music with filename fallbacks (browser tries top to bottom) -->
   <audio id="bg-music" loop playsinline preload="auto">
+    <!-- canonical (recommended) -->
     <source src="/assets/what-you-had-capo.mp3" type="audio/mpeg">
+    <!-- alternates (keep only one real file in your repo; these are safety nets) -->
     <source src="/assets/What-You-Had-Capo.mp3" type="audio/mpeg">
     <source src="/assets/What You Had - Capo.mp3" type="audio/mpeg">
     <source src="/assets/What%20You%20Had%20-%20Capo.mp3" type="audio/mpeg">
@@ -123,7 +120,7 @@
 
   <script>
   (function(){
-    /* ===== Music fade-in ===== */
+    /* ===== Music fade-in (console-only debug) ===== */
     const music   = document.getElementById('bg-music');
     const slider  = document.getElementById('volume-slider');
     const controls= document.getElementById('music-controls');
@@ -147,13 +144,20 @@
       try{
         music.muted = false;
         await music.play();
+        console.log('[bg-music] playing currentSrc:', music.currentSrc);
         fadeTo();
         controls.classList.add('show');
         document.getElementById('song-name').textContent = "🎵 Now Playing: " + SONG_TITLE;
       }catch(err){
-        console.warn('music.play() failed:', err);
+        console.warn('[bg-music] play() failed:', err);
+        // Silent fail if file missing or blocked — user experience continues
       }
     }
+
+    // Log useful media events in console (no on-page UI)
+    ['error','loadedmetadata','canplay','playing','stalled','abort','suspend'].forEach(ev=>{
+      music.addEventListener(ev, ()=>console.log(`[bg-music] ${ev}`, {readyState: music.readyState, networkState: music.networkState, currentSrc: music.currentSrc}));
+    });
 
     slider.addEventListener('input', ()=>{ music.volume = Number(slider.value); });
 
@@ -209,6 +213,7 @@
         stab.addEventListener('play', onPlay, { once:true });
         stab.currentTime = 0;
         stab.play().catch(()=>{
+          // If SFX fails (missing), still switch knife so UX continues
           knifeEl.style.backgroundImage = `url(${BLOODY_KNIFE_URL})`;
           startDrips();
           resolve();
@@ -216,49 +221,60 @@
       });
     }
 
-    /* ===== Continuous marquee (loops forever) ===== */
-    function loopMarquee(){
+    /* ===== One-pass marquee: one run then show all names ===== */
+    function onePassMarquee(){
       const container = document.getElementById('names');
       const track     = document.getElementById('track');
       const textEl    = document.getElementById('namesText');
 
-      // Build two copies for seamless loop
-      const clone = textEl.cloneNode(true);
-      track.appendChild(clone);
+      // ensure starting width
+      container.style.width = '35%';
+      container.style.overflow = 'hidden';
 
-      let textWidth;
-      function measure(){ textWidth = textEl.offsetWidth + 48; } // include gap
-      measure();
-      let x = 0;
-      const speed = 80; // px/sec (increase for faster)
+      requestAnimationFrame(()=>{
+        const cW = container.clientWidth;     // visible window for the pass
+        const tW = textEl.offsetWidth;        // full width of the names line
 
-      let last = performance.now();
-      function step(ts){
-        const dt = (ts - last) / 1000; last = ts;
-        x -= speed * dt;
-        if (x <= -textWidth) x += textWidth; // wrap seamlessly
+        let x = cW;                           // start just off the right edge
+        const speed = 80;                     // px/s — increase for faster
+        let last = performance.now();
+        let running = true;
+
+        function step(ts){
+          if(!running) return;
+          const dt = (ts - last) / 1000; last = ts;
+          x -= speed * dt;
+
+          if (x <= 0){
+            x = 0;
+            track.style.transform = `translateX(${x}px)`;
+            running = false;
+
+            // Expand so the full text remains visible and stationary
+            const maxWidth = Math.floor(window.innerWidth * 0.9);
+            const finalWidth = Math.min(tW + 4, maxWidth);
+            container.style.width = finalWidth + 'px';
+            container.style.overflow = 'visible';
+            return;
+          }
+
+          track.style.transform = `translateX(${x}px)`;
+          requestAnimationFrame(step);
+        }
+
         track.style.transform = `translateX(${x}px)`;
         requestAnimationFrame(step);
-      }
-      requestAnimationFrame(step);
-
-      // Re-measure on resize
-      addEventListener('resize', ()=>{
-        const prev = textWidth;
-        measure();
-        // keep visual position roughly consistent
-        x = (x / prev) * textWidth;
       });
     }
 
     /* ===== Entry sequence (click/tap/Enter) ===== */
     function enter(){
       if (gate.classList.contains('hidden')) return; // prevent double
-      playMusicOnClick();
+      playMusicOnClick();                // fade-in music on user gesture
       stabAndSwapNow().then(()=>{
-        site.classList.add('clear');
-        gate.classList.add('hidden');
-        loopMarquee(); // start continuous marquee
+        site.classList.add('clear');     // unblur
+        gate.classList.add('hidden');    // hide overlay
+        onePassMarquee();                // run the marquee once, then stop with all names visible
       });
     }
 
