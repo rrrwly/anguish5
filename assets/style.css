@@ -1,0 +1,195 @@
+@import url('https://fonts.googleapis.com/css2?family=Golos+Text:wght@600&display=swap');
+
+body {
+    margin: 0;
+    font-family: 'Golos Text', sans-serif;
+    background-color: #0d1117;
+    background: url(https://www.youtube.com/watch?v=BCzS1XEC_iU);
+    background-repeat: no-repeat;
+    background-size: cover;
+    background-position: center center;
+}
+
+.logo {
+    position: fixed;
+    display: flex;
+    z-index: 3;
+    justify-content: center;
+    width: 100%;
+    filter: brightness(1) invert(1);
+    height: 80px;
+    margin-top: 2em;
+}
+
+.enter {
+    background-color: #0d1117;
+    height: 100%;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: fixed;
+    z-index: 5;
+}
+
+.enter img {
+    width: 40px;
+}
+
+.enter img:hover {
+    cursor: pointer;
+}
+
+.wrap {
+    display: flex;
+    height: 100%;
+    z-index: 2;
+}
+
+.wrap .item {
+    background: #22223B;
+    width: 50%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 0;
+    transition: ease-in-out .1s;
+    color: #fff;
+    font-size: 30px;
+    background-position: center center;
+    background-size: cover;
+    margin: 0;
+    object-fit: cover;
+    position: relative;
+}
+
+.wrap .item img {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    top: 0;
+    left: 0;
+    z-index: 1;
+}
+
+.wrap .item:hover {
+    z-index: 1;
+    width: 75%;
+    cursor: pointer;
+}
+
+.item .overlay {
+    background: rgba(0,0,0,0);
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: absolute;
+    z-index: 2;
+}
+
+.item.login {
+    background: #22223B;
+}
+
+.item.login:hover {
+    background-size: cover;
+    background-position: center center;
+    
+}
+
+.item.roster {
+    background: #141422;
+}
+
+.roster-wrap {
+    z-index: 1;
+    display: none;
+    width: 100%;
+    padding-top: 250px;
+}
+
+.roster-wrap .row {
+    display: flex;
+    justify-content: center;
+    gap: 50px;
+}
+
+.roster-wrap .item {
+    display: flex;
+    flex-direction: column;
+    background-color: #161b22;
+    border-radius: 20px;
+    align-items: center;
+    color: #fff;
+    width: 200px;
+    padding: 20px;
+    margin-bottom: calc(75px + 32px);
+}
+
+.roster-wrap .item > img {
+    height: 150px;
+    border-radius: 50%;
+    margin-top: -95px;
+    transition: ease-in-out .1s;
+}
+
+.roster-wrap .item > img:hover {
+    transform: scale(1.05);
+}
+
+.roster-wrap .item .socials {
+    background-color: #080b0f;
+    border-radius: 10px;
+    width: fit-content;
+    padding: 13px 18px;
+    display: flex;
+    gap: 14px;
+}
+
+.roster-wrap .item .socials a {
+    text-decoration: none;
+}
+
+.roster-wrap .item .socials img {
+    height: 24px;
+    transition: ease-in-out .1s;
+}
+
+.roster-wrap .item .socials img:hover {
+   transform: scale(1.1); 
+}
+
+
+
+
+@media screen and (max-width: 999px) {
+
+    .enter {
+        display: none;
+    }
+
+    .logo {
+        margin-top: 1.25em;
+        height: 65px;
+    }
+
+    .wrap {
+        flex-direction: column;
+    }
+
+    .wrap .item {
+        height: 50%;
+        width: 100%;
+    }
+
+    .roster-wrap .row {
+        flex-direction: column;
+        align-items: center;
+        margin-bottom: 32px;
+    }
+
+}
