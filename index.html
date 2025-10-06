@@ -1,302 +1,50 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <title>defeat</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
-  <style>
-    body{
-      margin:0; display:flex; flex-direction:column; justify-content:center; align-items:center;
-      height:95vh; background:#fff; color:#000; font-family:Arial, sans-serif;
-      animation:fadeIn 2s ease-in; cursor:none; overflow:hidden;
-    }
-    @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+<script>
+// One-pass marquee: scrolls once, then stops neatly with all names visible
+function onePassMarquee() {
+  const container = document.querySelector('.marquee-container');
+  const track = document.getElementById('track');
+  const textEl = document.getElementById('namesText');
 
-    :root{ --tip-x:0.1px; --tip-y:10px; --knife-angle:-18deg; }
+  // slightly narrower starting width for better proportion
+  container.style.width = '28%';
+  container.style.overflow = 'hidden';
+  container.style.textAlign = 'center';
 
-    .marquee-container{ width:35%; overflow:hidden; box-sizing:border-box; font-size:14px; white-space:nowrap; }
-    #namesText{ display:inline-block; animation:scrollOnce 8s linear forwards; }
-    @keyframes scrollOnce{ 0%{transform:translateX(100%)} 100%{transform:translateX(0)} }
+  requestAnimationFrame(() => {
+    const cW = container.clientWidth;
+    const tW = textEl.offsetWidth;
 
-    span{ font-size:14px; text-align:center; margin-top:10px; opacity:.85; }
+    let x = cW;
+    const speed = 80; // px per second
+    let last = performance.now();
+    let running = true;
 
-    .site{ filter:blur(16px); opacity:.85; transition:filter 1200ms ease, opacity 1200ms ease; pointer-events:none; }
-    .site.clear{ filter:blur(0); opacity:1; pointer-events:auto; }
+    function step(ts) {
+      if (!running) return;
+      const dt = (ts - last) / 1000;
+      last = ts;
+      x -= speed * dt;
 
-    audio{ display:none; }
-    .music-controls{
-      position:fixed; bottom:15px; right:20px; display:flex; align-items:center; gap:8px;
-      opacity:0; visibility:hidden; transition:all .5s ease;
-      background:rgba(0,0,0,.05); padding:6px 10px; border-radius:8px; border:1px solid rgba(0,0,0,.2);
-      z-index:10000; font-size:12px;
-    }
-    .music-controls.show{ opacity:.9; visibility:visible; }
-    #volume-slider{ width:100px; cursor:pointer; accent-color:#000; }
-    #song-name{ font-size:12px; opacity:.8; }
-
-    .gate{
-      position:fixed; inset:0; background:rgba(255,255,255,.6); z-index:100001; display:grid; place-items:center;
-      transition:opacity .8s ease, visibility .8s ease; opacity:1; visibility:visible; cursor:none;
-    }
-    .gate.hidden{ opacity:0; visibility:hidden; pointer-events:none; }
-    .gate-text{
-      font-family:'Press Start 2P', monospace; font-size:14px; letter-spacing:.08em; color:#000; opacity:.85;
-      user-select:none; text-align:center; animation:pulse 1.4s infinite;
-    }
-    @keyframes pulse{0%{opacity:.6}50%{opacity:1}100%{opacity:.6}}
-
-    .knife{
-      position:fixed; width:70px; height:70px; left:0; top:0;
-      background-size:contain; background-repeat:no-repeat; background-position:center;
-      image-rendering:pixelated; transform-origin:15px 15px; pointer-events:none; z-index:100002;
-    }
-    .drop{
-      position:fixed; width:6px; height:6px; border-radius:50%; background:rgb(223,30,99); pointer-events:none; z-index:9999;
-      animation:fall var(--dur) linear forwards; box-shadow:0 0 6px rgba(223,30,99,.4);
-    }
-    @keyframes fall{0%{opacity:1; transform:translateY(0)}100%{opacity:0; transform:translateY(160px)}}
-  </style>
-</head>
-<body>
-  <!-- Knife cursor -->
-  <div class="knife" id="knife"></div>
-
-  <!-- Main content -->
-  <div id="site" class="site">
-    <img src="/assets/undefeated.gif" alt="undefeated gif">
-    <div>defeat</div>
-
-    <!-- One-pass marquee -->
-    <div class="marquee-container">
-      <div id="track"><span id="namesText">jord ryan matt saph maly tyler</span></div>
-    </div>
-
-    <span>uneasy lies the head that wears the crown</span>
-  </div>
-
-  <!-- Background music (src resolved dynamically in JS) -->
-  <audio id="bg-music" loop playsinline preload="auto"></audio>
-
-  <div id="music-controls" class="music-controls">
-    <span id="song-name">🎵 Now Playing: What You Had – Capo</span>
-    <span class="volume-label">🔊</span>
-    <input id="volume-slider" type="range" min="0" max="1" step="0.01" value="1">
-  </div>
-
-  <!-- Stab SFX -->
-  <audio id="sfx-stab" preload="auto">
-    <source src="/assets/stab.mp3" type="audio/mpeg">
-  </audio>
-
-  <!-- Click-to-enter overlay -->
-  <div id="gate" class="gate" aria-label="Click to enter">
-    <div class="gate-text">CLICK TO ENTER</div>
-  </div>
-
-  <script>
-  (function(){
-    /* ===== Smart audio resolver (tries site path and GitHub CDN) ===== */
-    const music = document.getElementById('bg-music');
-    const slider = document.getElementById('volume-slider');
-    const controls = document.getElementById('music-controls');
-    const SONG_TITLE = "What You Had – Capo";
-
-    // Put your file in the repo at assets/what-you-had-capo.mp3 for the canonical path.
-    const CANDIDATES = [
-      // Site paths (Porkbun deploy)
-      '/assets/what-you-had-capo.mp3',
-      '/assets/What-You-Had-Capo.mp3',
-      '/assets/What You Had - Capo.mp3',
-      '/assets/What%20You%20Had%20-%20Capo.mp3',
-
-      // GitHub CDN fallbacks (work as soon as the file is committed to repo)
-      'https://cdn.jsdelivr.net/gh/rrrwly/anguish5@main/assets/what-you-had-capo.mp3',
-      'https://cdn.jsdelivr.net/gh/rrrwly/anguish5@main/assets/What-You-Had-Capo.mp3',
-      'https://cdn.jsdelivr.net/gh/rrrwly/anguish5@main/assets/What%20You%20Had%20-%20Capo.mp3'
-    ];
-
-    async function probe(url){
-      try {
-        const r = await fetch(url, { method:'GET', headers:{ 'Range':'bytes=0-1' } });
-        // accept 200 or 206
-        if (r && (r.ok || r.status === 206)) {
-          const ct = (r.headers.get('content-type')||'').toLowerCase();
-          if (!ct || ct.includes('audio') || ct.includes('mpeg') || ct === 'application/octet-stream') {
-            return true;
-          }
-        }
-      } catch {}
-      return false;
-    }
-
-    let resolvedSrc = null;
-    async function resolveMusic(){
-      for (const u of CANDIDATES) {
-        if (await probe(u)) { resolvedSrc = u; break; }
-      }
-      if (resolvedSrc) {
-        music.src = resolvedSrc;
-        music.load();
-        console.log('[bg-music] resolved:', resolvedSrc);
-      } else {
-        console.warn('[bg-music] no candidate reachable — ensure the MP3 is in your repo under /assets/');
-      }
-    }
-
-    let fadeInt = null;
-    function fadeTo(targetVol = Number(slider.value || 1), ms = 5000){
-      const steps = Math.max(1, Math.round(ms / 50));
-      let i = 0;
-      clearInterval(fadeInt);
-      music.volume = 0;
-      fadeInt = setInterval(()=>{
-        i++;
-        const v = Math.min(targetVol, (i/steps) * targetVol);
-        music.volume = v;
-        if (i >= steps) clearInterval(fadeInt);
-      }, 50);
-    }
-
-    async function playMusicOnClick(){
-      if (!resolvedSrc) await resolveMusic();
-      if (!resolvedSrc) return; // nothing reachable
-      try{
-        music.muted = false;
-        await music.play();
-        fadeTo();
-        controls.classList.add('show');
-        document.getElementById('song-name').textContent = "🎵 Now Playing: " + SONG_TITLE;
-      }catch(err){
-        console.warn('[bg-music] play() failed:', err);
-      }
-    }
-
-    // Log some useful events to console
-    ['error','loadedmetadata','canplay','playing','stalled','abort','suspend'].forEach(ev=>{
-      music.addEventListener(ev, ()=>console.log(`[bg-music] ${ev}`, {readyState: music.readyState, networkState: music.networkState, currentSrc: music.currentSrc}));
-    });
-    slider.addEventListener('input', ()=>{ music.volume = Number(slider.value); });
-
-    /* ===== Knife + drips ===== */
-    const gate   = document.getElementById('gate');
-    const site   = document.getElementById('site');
-    const knifeEl= document.getElementById('knife');
-    const CLEAN_KNIFE_URL  = "/assets/knife-clean.png";
-    const BLOODY_KNIFE_URL = "/assets/knife.png";
-    knifeEl.style.backgroundImage = `url(${CLEAN_KNIFE_URL})`;
-    knifeEl.style.transform       = `rotate(var(--knife-angle))`;
-
-    let mx = innerWidth/2, my = innerHeight/2;
-    function placeKnife(){ knifeEl.style.left=(mx-35)+"px"; knifeEl.style.top=(my-35)+"px"; }
-    placeKnife();
-    ['mousemove','touchmove','pointermove'].forEach(evt=>{
-      addEventListener(evt, e=>{
-        const p = e.touches ? e.touches[0] : e;
-        mx = p.clientX; my = p.clientY; placeKnife();
-      }, {passive:true});
-    });
-
-    function startDrips(){
-      const DRIP_INTERVAL_MS = 260, DRIP_JITTER = 3;
-      setInterval(()=>{
-        const styles = getComputedStyle(document.documentElement);
-        const tipX = parseFloat(styles.getPropertyValue('--tip-x')) || 0.1;
-        const tipY = parseFloat(styles.getPropertyValue('--tip-y')) || 10;
-        const d = document.createElement('div'); d.className = 'drop';
-        const size = 3 + Math.random()*3, dur = 1.4 + Math.random()*2.0;
-        d.style.width = d.style.height = size + 'px';
-        d.style.setProperty('--dur', dur+'s');
-        d.style.opacity = 0.6 + Math.random()*0.35;
-        const x = mx + tipX + (Math.random()*DRIP_JITTER - DRIP_JITTER/2);
-        const y = my + tipY + (Math.random()*DRIP_JITTER - DRIP_JITTER/2);
-        d.style.left = x + 'px'; d.style.top = y + 'px';
-        document.body.appendChild(d);
-        setTimeout(()=>d.remove(), dur*1000);
-      }, DRIP_INTERVAL_MS);
-    }
-
-    const stab = document.getElementById('sfx-stab');
-    function stabAndSwapNow(){
-      return new Promise(resolve=>{
-        const onPlay = ()=>{
-          knifeEl.style.backgroundImage = `url(${BLOODY_KNIFE_URL})`;
-          startDrips();
-          stab.removeEventListener('play', onPlay);
-          resolve();
-        };
-        stab.addEventListener('play', onPlay, { once:true });
-        stab.currentTime = 0;
-        stab.play().catch(()=>{
-          knifeEl.style.backgroundImage = `url(${BLOODY_KNIFE_URL})`;
-          startDrips();
-          resolve();
-        });
-      });
-    }
-
-    /* One-pass marquee (scroll once then show all names) */
-    function onePassMarquee(){
-      const container = document.querySelector('.marquee-container');
-      const track     = document.getElementById('track');
-      const textEl    = document.getElementById('namesText');
-
-      container.style.width = '35%';
-      container.style.overflow = 'hidden';
-
-      requestAnimationFrame(()=>{
-        const cW = container.clientWidth;
-        const tW = textEl.offsetWidth;
-
-        let x = cW;
-        const speed = 80; // px/s
-        let last = performance.now();
-        let running = true;
-
-        function step(ts){
-          if(!running) return;
-          const dt = (ts - last) / 1000; last = ts;
-          x -= speed * dt;
-
-          if (x <= 0){
-            x = 0;
-            track.style.transform = `translateX(${x}px)`;
-            running = false;
-
-            const maxWidth = Math.floor(window.innerWidth * 0.9);
-            const finalWidth = Math.min(tW + 4, maxWidth);
-            container.style.width = finalWidth + 'px';
-            container.style.overflow = 'visible';
-            return;
-          }
-
-          track.style.transform = `translateX(${x}px)`;
-          requestAnimationFrame(step);
-        }
-
+      // when finished scrolling
+      if (x <= 0) {
+        x = 0;
         track.style.transform = `translateX(${x}px)`;
-        requestAnimationFrame(step);
-      });
+        running = false;
+
+        // adjust final width (a little narrower than before)
+        const maxWidth = Math.floor(window.innerWidth * 0.7);
+        const finalWidth = Math.min(tW * 0.85, maxWidth);
+        container.style.width = finalWidth + 'px';
+        container.style.overflow = 'visible';
+        return;
+      }
+
+      track.style.transform = `translateX(${x}px)`;
+      requestAnimationFrame(step);
     }
 
-    /* Entry sequence */
-    function enter(){
-      if (gate.classList.contains('hidden')) return;
-      playMusicOnClick();             // resolves + fades in music
-      stabAndSwapNow().then(()=>{
-        site.classList.add('clear');  // unblur
-        gate.classList.add('hidden'); // hide overlay
-        onePassMarquee();             // one run then stop showing all names
-      });
-    }
-
-    gate.addEventListener('click', enter, {passive:true});
-    gate.addEventListener('touchstart', e=>{ e.preventDefault(); enter(); }, {passive:false});
-    addEventListener('keydown', e=>{ if (e.key === 'Enter') enter(); });
-
-    // Pre-resolve so it's ready when they click
-    resolveMusic();
-  })();
-  </script>
-</body>
-</html>
+    track.style.transform = `translateX(${x}px)`;
+    requestAnimationFrame(step);
+  });
+}
+</script>
