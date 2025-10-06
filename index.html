@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <title>defeat</title>
-  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
   <style>
     /* Base layout */
     body{
@@ -21,13 +21,17 @@
       --knife-angle: -18deg;
     }
 
-    /* Marquee */
+    /* Continuous marquee */
     .marquee-container{
       width:35%; overflow:hidden; box-sizing:border-box; font-size:14px; white-space:nowrap;
-      transition:width 600ms ease;
     }
-    .marquee-track{ will-change: transform; }
-    .marquee-text{ display:inline-block; white-space:nowrap; }
+    .marquee-track{
+      display:inline-block; will-change: transform;
+    }
+    .marquee-text{
+      display:inline-block; padding-right:48px; /* gap between repeats */
+      white-space:nowrap;
+    }
 
     span{ font-size:14px; text-align:center; margin-top:10px; opacity:.85; }
 
@@ -35,7 +39,7 @@
     .site{ filter:blur(16px); opacity:.85; transition:filter 1200ms ease, opacity 1200ms ease; pointer-events:none; }
     .site.clear{ filter:blur(0); opacity:1; pointer-events:auto; }
 
-    /* Music UI (stays hidden, but keeps your volume control if needed later) */
+    /* Music UI */
     audio{ display:none; }
     .music-controls{
       position:fixed; bottom:15px; right:20px; display:flex; align-items:center; gap:8px;
@@ -78,12 +82,14 @@
 
   <!-- Main content -->
   <div id="site" class="site">
-    <img src="https://cdn.discordapp.com/attachments/1117356079051964446/1424607076667097158/ZBzQzuI.gif" alt="undefeated gif">
+    <!-- Use local GIF so it never expires -->
+    <img src="/assets/undefeated.gif" alt="undefeated gif">
     <div>defeat</div>
 
-    <!-- One-pass marquee -->
+    <!-- Continuous marquee -->
     <div class="marquee-container" id="names">
       <div class="marquee-track" id="track">
+        <!-- We’ll duplicate this text in JS to create an infinite loop -->
         <span class="marquee-text" id="namesText">jord ryan matt saph maly tyler</span>
       </div>
     </div>
@@ -93,10 +99,10 @@
 
   <!-- Background music with filename fallbacks (browser tries top to bottom) -->
   <audio id="bg-music" loop playsinline preload="auto">
-    <source src="assets/what-you-had-capo.mp3" type="audio/mpeg">
-    <source src="assets/What-You-Had-Capo.mp3" type="audio/mpeg">
-    <source src="assets/What You Had - Capo.mp3" type="audio/mpeg">
-    <source src="assets/What%20You%20Had%20-%20Capo.mp3" type="audio/mpeg">
+    <source src="/assets/what-you-had-capo.mp3" type="audio/mpeg">
+    <source src="/assets/What-You-Had-Capo.mp3" type="audio/mpeg">
+    <source src="/assets/What You Had - Capo.mp3" type="audio/mpeg">
+    <source src="/assets/What%20You%20Had%20-%20Capo.mp3" type="audio/mpeg">
   </audio>
 
   <div id="music-controls" class="music-controls">
@@ -107,7 +113,7 @@
 
   <!-- Stab SFX -->
   <audio id="sfx-stab" preload="auto">
-    <source src="assets/stab.mp3" type="audio/mpeg">
+    <source src="/assets/stab.mp3" type="audio/mpeg">
   </audio>
 
   <!-- Click-to-enter overlay -->
@@ -117,7 +123,7 @@
 
   <script>
   (function(){
-    /* ===== Music fade-in (no retry pill) ===== */
+    /* ===== Music fade-in ===== */
     const music   = document.getElementById('bg-music');
     const slider  = document.getElementById('volume-slider');
     const controls= document.getElementById('music-controls');
@@ -145,7 +151,6 @@
         controls.classList.add('show');
         document.getElementById('song-name').textContent = "🎵 Now Playing: " + SONG_TITLE;
       }catch(err){
-        // Silent fail if autoplay blocks or file missing
         console.warn('music.play() failed:', err);
       }
     }
@@ -156,8 +161,8 @@
     const gate   = document.getElementById('gate');
     const site   = document.getElementById('site');
     const knifeEl= document.getElementById('knife');
-    const CLEAN_KNIFE_URL  = "assets/knife-clean.png";
-    const BLOODY_KNIFE_URL = "assets/knife.png";
+    const CLEAN_KNIFE_URL  = "/assets/knife-clean.png";
+    const BLOODY_KNIFE_URL = "/assets/knife.png";
     knifeEl.style.backgroundImage = `url(${CLEAN_KNIFE_URL})`;
     knifeEl.style.transform       = `rotate(var(--knife-angle))`;
 
@@ -165,7 +170,6 @@
     function placeKnife(){ knifeEl.style.left=(mx-35)+"px"; knifeEl.style.top=(my-35)+"px"; }
     placeKnife();
 
-    // ensure clicks/taps work everywhere
     ['mousemove','touchmove','pointermove'].forEach(evt=>{
       addEventListener(evt, e=>{
         const p = e.touches ? e.touches[0] : e;
@@ -205,7 +209,6 @@
         stab.addEventListener('play', onPlay, { once:true });
         stab.currentTime = 0;
         stab.play().catch(()=>{
-          // If SFX fails (missing file), still switch knife so UX continues
           knifeEl.style.backgroundImage = `url(${BLOODY_KNIFE_URL})`;
           startDrips();
           resolve();
@@ -213,60 +216,55 @@
       });
     }
 
-    /* ===== One-pass marquee ===== */
-    function onePassMarquee(){
+    /* ===== Continuous marquee (loops forever) ===== */
+    function loopMarquee(){
       const container = document.getElementById('names');
       const track     = document.getElementById('track');
       const textEl    = document.getElementById('namesText');
 
-      requestAnimationFrame(()=>{
-        const cW = container.clientWidth;
-        const tW = textEl.offsetWidth;
+      // Build two copies for seamless loop
+      const clone = textEl.cloneNode(true);
+      track.appendChild(clone);
 
-        let x = cW;           // start off the right edge
-        const speed = 50;     // px/s
-        let last = performance.now();
-        let running = true;
+      let textWidth;
+      function measure(){ textWidth = textEl.offsetWidth + 48; } // include gap
+      measure();
+      let x = 0;
+      const speed = 80; // px/sec (increase for faster)
 
-        function step(ts){
-          if (!running) return;
-          const dt = (ts - last) / 1000; last = ts;
-          x -= speed * dt;
-          if (x <= 0){
-            x = 0;
-            track.style.transform = `translateX(${x}px)`;
-            running = false;
-
-            // Expand so the full names line remains visible and stops
-            const maxWidth = Math.floor(window.innerWidth * 0.9);
-            const finalWidth = Math.min(tW + 4, maxWidth);
-            container.style.width = finalWidth + 'px';
-            container.style.overflow = 'visible';
-            return;
-          }
-          track.style.transform = `translateX(${x}px)`;
-          requestAnimationFrame(step);
-        }
-
+      let last = performance.now();
+      function step(ts){
+        const dt = (ts - last) / 1000; last = ts;
+        x -= speed * dt;
+        if (x <= -textWidth) x += textWidth; // wrap seamlessly
         track.style.transform = `translateX(${x}px)`;
         requestAnimationFrame(step);
+      }
+      requestAnimationFrame(step);
+
+      // Re-measure on resize
+      addEventListener('resize', ()=>{
+        const prev = textWidth;
+        measure();
+        // keep visual position roughly consistent
+        x = (x / prev) * textWidth;
       });
     }
 
     /* ===== Entry sequence (click/tap/Enter) ===== */
     function enter(){
-      // prevent double-trigger
-      if (gate.classList.contains('hidden')) return;
+      if (gate.classList.contains('hidden')) return; // prevent double
       playMusicOnClick();
       stabAndSwapNow().then(()=>{
         site.classList.add('clear');
         gate.classList.add('hidden');
-        onePassMarquee();
+        loopMarquee(); // start continuous marquee
       });
     }
 
+    const enterTap = e => { e.preventDefault(); enter(); };
     gate.addEventListener('click', enter, {passive:true});
-    gate.addEventListener('touchstart', e=>{ e.preventDefault(); enter(); }, {passive:false});
+    gate.addEventListener('touchstart', enterTap, {passive:false});
     addEventListener('keydown', e=>{ if (e.key === 'Enter') enter(); });
 
   })();
