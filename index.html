@@ -40,10 +40,12 @@
       transition:opacity .8s ease, visibility .8s ease; opacity:1; visibility:visible; pointer-events:auto;
     }
     .gate.hidden{ opacity:0; visibility:hidden; pointer-events:none; }
-    .gate-text{
+    .gate-button{
+      background:none; border:0; padding:0; margin:0;
       font-family:'Press Start 2P', monospace; font-size:14px; letter-spacing:.08em; color:#000; opacity:.9;
       user-select:none; text-align:center; animation:pulse 1.4s infinite;
     }
+    .gate-button:focus{ outline:none; }
     @keyframes pulse{0%{opacity:.6}50%{opacity:1}100%{opacity:.6}}
 
     /* Marquee (init on enter) */
@@ -108,7 +110,6 @@
 
   <!-- Audio -->
   <audio id="bg-music" loop playsinline preload="auto">
-    <!-- set a default known-good src; we’ll still try fallbacks if playback fails -->
     <source src="/assets/what-you-had-capo.mp3" type="audio/mpeg">
   </audio>
   <div id="music-controls" class="music-controls">
@@ -121,8 +122,8 @@
   </audio>
 
   <!-- Click-to-enter gate -->
-  <div id="gate" class="gate" role="button" aria-label="Click to enter" tabindex="0">
-    <div class="gate-text">CLICK TO ENTER</div>
+  <div id="gate" class="gate" role="button" aria-label="Click to enter">
+    <button id="gateBtn" class="gate-button" type="button">CLICK TO ENTER</button>
   </div>
 
   <script>
@@ -130,6 +131,7 @@
     /* Force initial state */
     const site = document.getElementById('site');
     const gate = document.getElementById('gate');
+    const gateBtn = document.getElementById('gateBtn');
     site.classList.remove('clear');
     gate.classList.remove('hidden');
 
@@ -147,10 +149,9 @@
       'https://cdn.jsdelivr.net/gh/rrrwly/anguish5@main/assets/what-you-had-capo.mp3'
     ];
 
-    // Try to swap source **only if** play fails (don’t block on HEAD)
     async function tryFallbackSources(){
       for(const u of MUSIC_CANDIDATES){
-        if (music.currentSrc.endsWith(u)) continue;
+        if (music.currentSrc && music.currentSrc.endsWith(u)) continue;
         music.src = u;
         try { await music.play(); return true; } catch {}
       }
@@ -172,7 +173,6 @@
         controls.classList.add('show');
         document.getElementById('song-name').textContent = "🎵 Now Playing: " + SONG_TITLE;
       }catch(err){
-        // try other URLs if the first one fails
         const ok = await tryFallbackSources();
         if (ok){ fadeTo(); controls.classList.add('show'); }
         else { console.warn('All music sources failed'); }
@@ -267,12 +267,33 @@
       initMarquee();                 // start marquee now
     }
 
-    // robust bindings (desktop + mobile + keyboard)
-    ['pointerdown','click'].forEach(evt=>{
+    // Bind robustly on the gate…
+    ['pointerdown','pointerup','click','touchstart','touchend','mousedown','mouseup'].forEach(evt=>{
       gate.addEventListener(evt, (e)=>{ e.preventDefault(); enter(); }, {passive:false});
+      gateBtn.addEventListener(evt, (e)=>{ e.preventDefault(); enter(); }, {passive:false});
     });
-    gate.addEventListener('touchstart', (e)=>{ e.preventDefault(); enter(); }, {passive:false});
-    gate.addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' ') { e.preventDefault(); enter(); } });
+    // …and as a safety net, capture the very first gesture anywhere on the page
+    const firstGesture = (e) => {
+      if (!gate.classList.contains('hidden')) {
+        e.preventDefault();
+        enter();
+      }
+      cleanup();
+    };
+    function cleanup(){
+      ['pointerdown','click','touchstart','keydown','mousedown'].forEach(ev=>{
+        document.removeEventListener(ev, firstGesture, true);
+      });
+    }
+    ['pointerdown','click','touchstart','keydown','mousedown'].forEach(ev=>{
+      document.addEventListener(ev, firstGesture, true); // capture phase
+    });
+    // Keyboard fallback while gate is visible
+    document.addEventListener('keydown', (e)=> {
+      if ((e.key==='Enter' || e.key===' ') && !gate.classList.contains('hidden')) {
+        e.preventDefault(); enter();
+      }
+    });
   });
   </script>
 </body>
