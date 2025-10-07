@@ -4,17 +4,16 @@
   <meta charset="UTF-8" />
   <title>defeat</title>
 
-  <!-- Discord Embed -->
-  <meta property="og:type" content="website" />
-  <meta property="og:title" content=" " />
-  <meta property="og:description" content="A Silent Throne Drenched in Power" />
-  <meta property="og:url" content="https://defeat.rip/" />
-  <meta property="og:image" content="https://defeat.rip/assets/ascii_sword_final.png" />
-  <meta property="og:image:type" content="image/png" />
-  <meta property="og:image:width" content="1200" />
-  <meta property="og:image:height" content="630" />
-  <meta name="twitter:card" content="summary_large_image" />
-  <meta name="theme-color" content="#000000" />
+  <!-- Discord Embed Settings -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="defeat.rip">
+  <meta property="og:description" content="A Silent Throne Drenched in Power">
+  <meta property="og:image" content="https://defeat.rip/assets/sword.png">
+  <meta property="og:image:type" content="image/png">
+  <meta property="og:image:width" content="600">
+  <meta property="og:image:height" content="900">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="theme-color" content="#000000">
 
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
   <style>
@@ -43,21 +42,9 @@
     .marquee-container {
       width: 30%;
       overflow: hidden;
-      white-space: nowrap;
       box-sizing: border-box;
       font-size: 14px;
-      position: relative;
-    }
-
-    .marquee-text {
-      display: inline-block;
-      animation: scrollText 18s linear forwards;
-    }
-
-    @keyframes scrollText {
-      0% { transform: translateX(100%); }
-      90% { transform: translateX(0); }
-      100% { transform: translateX(0); }
+      white-space: nowrap;
     }
 
     span {
@@ -70,10 +57,32 @@
     .site {
       filter: blur(16px);
       opacity: 0.85;
-      transition: filter 1.2s ease, opacity 1.2s ease;
+      transition: filter 1200ms ease, opacity 1200ms ease;
       pointer-events: none;
     }
     .site.clear { filter: blur(0); opacity: 1; pointer-events: auto; }
+
+    audio { display: none; }
+    .music-controls {
+      position: fixed; bottom: 15px; right: 20px;
+      display: flex; align-items: center; gap: 8px;
+      opacity: 0; visibility: hidden; transition: all 0.5s ease;
+      background: rgba(0,0,0,0.05); padding: 6px 10px; border-radius: 8px;
+      border: 1px solid rgba(0,0,0,0.2); z-index: 10000; font-size: 12px;
+    }
+    .music-controls.show { opacity: .9; visibility: visible; }
+    #volume-slider { width: 100px; cursor: pointer; accent-color: #000; }
+    #song-name { font-size: 12px; opacity: .8; }
+
+    .music-retry {
+      position: fixed; bottom: 60px; right: 20px;
+      padding: 6px 10px; font-size: 12px;
+      background: rgba(0,0,0,.75); color: #fff; border-radius: 999px;
+      cursor: pointer; user-select: none;
+      opacity: 0; visibility: hidden; transition: all .3s ease;
+      z-index: 10000;
+    }
+    .music-retry.show { opacity: 1; visibility: visible; }
 
     .gate {
       position: fixed; inset: 0; background: rgba(255,255,255,.6);
@@ -100,27 +109,16 @@
       animation: fall var(--dur) linear forwards; box-shadow: 0 0 6px rgba(223,30,99,.4);
     }
     @keyframes fall { 0%{opacity:1; transform:translateY(0)} 100%{opacity:0; transform:translateY(160px)} }
-
-    .music-controls {
-      position: fixed; bottom: 15px; right: 20px;
-      display: flex; align-items: center; gap: 8px;
-      opacity: 0; visibility: hidden; transition: all 0.5s ease;
-      background: rgba(0,0,0,0.05); padding: 6px 10px; border-radius: 8px;
-      border: 1px solid rgba(0,0,0,0.2); z-index: 10000; font-size: 12px;
-    }
-    .music-controls.show { opacity: .9; visibility: visible; }
-    #volume-slider { width: 100px; cursor: pointer; accent-color: #000; }
-    #song-name { font-size: 12px; opacity: .8; }
   </style>
 </head>
 <body>
   <div class="knife" id="knife"></div>
 
   <div id="site" class="site">
-    <img src="https://cdn.discordapp.com/attachments/1117356079051964446/1424607076667097158/ZBzQzuI.gif" alt="undefeated gif">
+    <img src="https://cdn.discordapp.com/attachments/1117356079051964446/1424607076667097158/ZBzQzuI.gif" alt="defeat gif">
     <div>defeat</div>
-    <div class="marquee-container">
-      <div class="marquee-text">jord ryan matt saph maly tyler</div>
+    <div class="marquee-container" id="names">
+      <div id="track"><span id="namesText">jord ryan matt saph maly tyler</span></div>
     </div>
     <span>uneasy lies the head that wears the crown</span>
   </div>
@@ -128,87 +126,131 @@
   <audio id="bg-music" loop playsinline preload="auto">
     <source src="assets/what-you-had-capo.mp3" type="audio/mpeg">
   </audio>
-  <audio id="sfx-stab" preload="auto">
-    <source src="assets/stab.mp3" type="audio/mpeg">
-  </audio>
-
   <div id="music-controls" class="music-controls">
     <span id="song-name">🎵 Now Playing: What You Had – Capo</span>
     <span class="volume-label">🔊</span>
     <input id="volume-slider" type="range" min="0" max="1" step="0.01" value="1">
   </div>
+  <div id="music-retry" class="music-retry">Tap to start music</div>
 
-  <div id="gate" class="gate"><div class="gate-text">CLICK TO ENTER</div></div>
+  <audio id="sfx-stab" preload="auto">
+    <source src="assets/stab.mp3" type="audio/mpeg">
+  </audio>
+
+  <div id="gate" class="gate" aria-label="Click to enter">
+    <div class="gate-text">CLICK TO ENTER</div>
+  </div>
 
   <script>
     const music = document.getElementById('bg-music');
-    const stab = document.getElementById('sfx-stab');
     const slider = document.getElementById('volume-slider');
     const controls = document.getElementById('music-controls');
-    const site = document.getElementById('site');
-    const gate = document.getElementById('gate');
-    const knifeEl = document.getElementById('knife');
+    const retry = document.getElementById('music-retry');
+    const SONG_TITLE = "What You Had – Capo";
+    let fadeInt = null, playWatchdog = null, playedOnce = false;
 
+    function fadeTo(targetVol = Number(slider.value || 1), ms = 4000){
+      const steps = Math.max(1, Math.round(ms / 50));
+      let i = 0;
+      clearInterval(fadeInt);
+      music.volume = 0;
+      fadeInt = setInterval(()=>{
+        i++;
+        const v = Math.min(targetVol, (i/steps) * targetVol);
+        music.volume = v;
+        if (i >= steps) clearInterval(fadeInt);
+      }, 50);
+    }
+
+    async function playMusicSafe(){
+      try{
+        music.muted = false;
+        await music.play();
+        fadeTo();
+        playedOnce = true;
+        controls.classList.add('show');
+        document.getElementById('song-name').textContent = "🎵 Now Playing: " + SONG_TITLE;
+      }catch(err){
+        retry.classList.add('show');
+      }
+    }
+
+    function armWatchdog(){
+      clearTimeout(playWatchdog);
+      playWatchdog = setTimeout(()=>{
+        if (!playedOnce) retry.classList.add('show');
+      }, 3000);
+    }
+
+    retry.addEventListener('click', async ()=>{
+      retry.classList.remove('show');
+      await playMusicSafe();
+    });
+
+    music.addEventListener('playing', ()=>{
+      controls.classList.add('show');
+      retry.classList.remove('show');
+      playedOnce = true;
+    });
+
+    slider.addEventListener('input', ()=>{ music.volume = Number(slider.value); });
+
+    const gate = document.getElementById('gate');
+    const site = document.getElementById('site');
+    const knifeEl = document.getElementById('knife');
     const CLEAN_KNIFE_URL = "assets/knife-clean.png";
     const BLOODY_KNIFE_URL = "assets/knife.png";
-
     knifeEl.style.backgroundImage = `url(${CLEAN_KNIFE_URL})`;
     knifeEl.style.transform = `rotate(var(--knife-angle))`;
 
-    let mx = innerWidth / 2, my = innerHeight / 2;
-    function placeKnife() {
-      knifeEl.style.left = (mx - 35) + "px";
-      knifeEl.style.top = (my - 35) + "px";
+    let mx = innerWidth/2, my = innerHeight/2;
+    function placeKnife(){ knifeEl.style.left=(mx-35)+"px"; knifeEl.style.top=(my-35)+"px"; }
+    placeKnife();
+    addEventListener('mousemove', e=>{ mx=e.clientX; my=e.clientY; placeKnife(); }, {passive:true});
+
+    function startDrips(){
+      const DRIP_INTERVAL_MS=260, DRIP_JITTER=3;
+      setInterval(()=>{
+        const tipX=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--tip-x'))||0.1;
+        const tipY=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--tip-y'))||10;
+        const d=document.createElement('div'); d.className='drop';
+        const size=3+Math.random()*3, dur=1.4+Math.random()*2.0;
+        d.style.width=d.style.height=size+'px';
+        d.style.setProperty('--dur', dur+'s');
+        d.style.opacity=0.6+Math.random()*0.35;
+        const x=mx+tipX+(Math.random()*DRIP_JITTER-DRIP_JITTER/2);
+        const y=my+tipY+(Math.random()*DRIP_JITTER-DRIP_JITTER/2);
+        d.style.left=x+'px'; d.style.top=y+'px';
+        document.body.appendChild(d);
+        setTimeout(()=>d.remove(), dur*1000);
+      }, DRIP_INTERVAL_MS);
     }
-    addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; placeKnife(); }, { passive: true });
 
-    function fadeInMusic(targetVol = Number(slider.value || 1), duration = 6000) {
-      music.volume = 0;
-      const steps = 60;
-      let step = 0;
-      const interval = setInterval(() => {
-        step++;
-        music.volume = Math.min(targetVol, (step / steps) * targetVol);
-        if (step >= steps) clearInterval(interval);
-      }, duration / steps);
+    const stab = document.getElementById('sfx-stab');
+    function stabAndSwapNow(){
+      return new Promise(resolve=>{
+        const onPlay=()=>{
+          knifeEl.style.backgroundImage=`url(${BLOODY_KNIFE_URL})`;
+          startDrips();
+          stab.removeEventListener('play', onPlay);
+          resolve();
+        };
+        stab.addEventListener('play', onPlay, {once:true});
+        stab.currentTime=0;
+        stab.play().catch(()=>{
+          knifeEl.style.backgroundImage=`url(${BLOODY_KNIFE_URL})`;
+          startDrips();
+          resolve();
+        });
+      });
     }
 
-    slider.addEventListener('input', () => { music.volume = Number(slider.value); });
-
-    gate.addEventListener('click', async () => {
-      try {
-        music.muted = false;
-        await music.play();
-        fadeInMusic();
-        controls.classList.add('show');
-      } catch (err) {
-        console.warn("Autoplay blocked:", err);
-      }
-
-      stab.currentTime = 0;
-      stab.play().catch(() => {});
-      knifeEl.style.backgroundImage = `url(${BLOODY_KNIFE_URL})`;
-
+    gate.addEventListener('click', async ()=>{
+      armWatchdog();
+      playMusicSafe();
+      await stabAndSwapNow();
       site.classList.add('clear');
       gate.classList.add('hidden');
-
-      const DRIP_INTERVAL_MS = 260, DRIP_JITTER = 3;
-      setInterval(() => {
-        const tipX = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--tip-x')) || 0.1;
-        const tipY = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--tip-y')) || 10;
-        const d = document.createElement('div');
-        d.className = 'drop';
-        const size = 3 + Math.random() * 3, dur = 1.4 + Math.random() * 2.0;
-        d.style.width = d.style.height = size + 'px';
-        d.style.setProperty('--dur', dur + 's');
-        d.style.opacity = 0.6 + Math.random() * 0.35;
-        const x = mx + tipX + (Math.random() * DRIP_JITTER - DRIP_JITTER / 2);
-        const y = my + tipY + (Math.random() * DRIP_JITTER - DRIP_JITTER / 2);
-        d.style.left = x + 'px';
-        d.style.top = y + 'px';
-        document.body.appendChild(d);
-        setTimeout(() => d.remove(), dur * 1000);
-      }, DRIP_INTERVAL_MS);
     });
   </script>
 </body>
