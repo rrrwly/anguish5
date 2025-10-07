@@ -3,10 +3,12 @@
 <head>
   <meta charset="UTF-8" />
   <title>defeat</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <!-- Discord / Open Graph Embed -->
   <meta property="og:title" content="defeat.rip" />
-  <meta property="og:description" content="
+  <meta property="og:description" content="A silent throne drenched in power.
+
      /\
     /**\
    /****\
@@ -26,7 +28,8 @@
   <!-- Twitter Card fallback -->
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="defeat.rip" />
-  <meta name="twitter:description" content="
+  <meta name="twitter:description" content="A silent throne drenched in power.
+
      /\
     /**\
    /****\
@@ -42,262 +45,246 @@
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
 
   <style>
-    body {
-      margin: 0;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      height: 95vh;
-      background: #fff;
-      color: #000;
-      font-family: Arial, sans-serif;
-      animation: fadeIn 2s ease-in;
-      cursor: none;
-      overflow: hidden;
+    body{
+      margin:0; display:flex; flex-direction:column; justify-content:center; align-items:center;
+      height:95vh; background:#fff; color:#000; font-family:Arial, sans-serif;
+      animation:fadeIn 2s ease-in; cursor:none; overflow:hidden;
     }
+    @keyframes fadeIn{from{opacity:0}to{opacity:1}}
 
-    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    :root{ --tip-x:0.1px; --tip-y:10px; --knife-angle:-18deg; }
 
-    :root {
-      --tip-x: 0.1px;
-      --tip-y: 10px;
-      --knife-angle: -18deg;
+    /* content */
+    .site{ filter:blur(16px); opacity:.85; transition:filter 1200ms ease, opacity 1200ms ease; pointer-events:none; }
+    .site.clear{ filter:blur(0); opacity:1; pointer-events:auto; }
+    span{ font-size:14px; text-align:center; margin-top:10px; opacity:.85; }
+
+    /* marquee (sized and scrolled via JS) */
+    .marquee-container{ overflow:hidden; box-sizing:border-box; font-size:14px; white-space:nowrap; visibility:hidden; }
+    .marquee-track{ will-change: transform; }
+    .marquee-text{ display:inline-block; white-space:nowrap; }
+
+    /* overlay gate */
+    .gate{
+      position:fixed; inset:0; background:rgba(255,255,255,.6); z-index:100001; display:grid; place-items:center;
+      transition:opacity .8s ease, visibility .8s ease; opacity:1; visibility:visible; cursor:none;
     }
-
-    .marquee-container {
-      width: 30%;
-      overflow: hidden;
-      white-space: nowrap;
-      font-size: 14px;
-      margin-top: 5px;
+    .gate.hidden{ opacity:0; visibility:hidden; pointer-events:none; }
+    .gate-text{
+      font-family:'Press Start 2P', monospace; font-size:14px; letter-spacing:.08em; color:#000; opacity:.85;
+      user-select:none; text-align:center; animation:pulse 1.4s infinite;
     }
+    @keyframes pulse{0%{opacity:.6}50%{opacity:1}100%{opacity:.6}}
 
-    #track {
-      display: inline-block;
-      animation: scrollNames 12s linear 1;
-      animation-fill-mode: forwards;
+    /* music UI */
+    audio{ display:none; }
+    .music-controls{
+      position:fixed; bottom:15px; right:20px; display:flex; align-items:center; gap:8px;
+      opacity:0; visibility:hidden; transition:all .5s ease;
+      background:rgba(0,0,0,.05); padding:6px 10px; border-radius:8px; border:1px solid rgba(0,0,0,.2);
+      z-index:10000; font-size:12px;
     }
+    .music-controls.show{ opacity:.9; visibility:visible; }
+    #volume-slider{ width:100px; cursor:pointer; accent-color:#000; }
+    #song-name{ font-size:12px; opacity:.8; }
 
-    @keyframes scrollNames {
-      0% { transform: translateX(100%); }
-      100% { transform: translateX(0%); }
+    /* cursor knife + drops */
+    .knife{
+      position:fixed; width:70px; height:70px; left:0; top:0;
+      background-size:contain; background-repeat:no-repeat; background-position:center;
+      image-rendering:pixelated; transform-origin:15px 15px; pointer-events:none; z-index:100002;
     }
-
-    span {
-      font-size: 14px;
-      text-align: center;
-      margin-top: 10px;
-      opacity: 0.85;
+    .drop{
+      position:fixed; width:6px; height:6px; border-radius:50%; background:rgb(223,30,99); pointer-events:none; z-index:9999;
+      animation:fall var(--dur) linear forwards; box-shadow:0 0 6px rgba(223,30,99,.4);
     }
-
-    .site {
-      filter: blur(16px);
-      opacity: 0.85;
-      transition: filter 1200ms ease, opacity 1200ms ease;
-      pointer-events: none;
-    }
-
-    .site.clear { filter: blur(0); opacity: 1; pointer-events: auto; }
-
-    audio { display: none; }
-
-    .music-controls {
-      position: fixed;
-      bottom: 15px;
-      right: 20px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      opacity: 0;
-      visibility: hidden;
-      transition: all 0.5s ease;
-      background: rgba(0,0,0,0.05);
-      padding: 6px 10px;
-      border-radius: 8px;
-      border: 1px solid rgba(0,0,0,0.2);
-      z-index: 10000;
-      font-size: 12px;
-    }
-
-    .music-controls.show { opacity: .9; visibility: visible; }
-    #volume-slider { width: 100px; cursor: pointer; accent-color: #000; }
-    #song-name { font-size: 12px; opacity: .8; }
-
-    .gate {
-      position: fixed; inset: 0;
-      background: rgba(255,255,255,.6);
-      z-index: 100001;
-      display: grid; place-items: center;
-      cursor: none;
-      transition: opacity .8s ease, visibility .8s ease;
-      opacity: 1; visibility: visible;
-    }
-
-    .gate.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
-
-    .gate-text {
-      font-family: 'Press Start 2P', monospace;
-      font-size: 14px;
-      letter-spacing: .08em;
-      color: #000;
-      opacity: .85;
-      user-select: none;
-      text-align: center;
-      animation: pulse 1.4s infinite;
-    }
-
-    @keyframes pulse { 0%{opacity:.6} 50%{opacity:1} 100%{opacity:.6} }
-
-    .knife {
-      position: fixed;
-      width: 70px; height: 70px;
-      left: 0; top: 0;
-      background-size: contain;
-      background-repeat: no-repeat;
-      background-position: center;
-      image-rendering: pixelated;
-      transform-origin: 15px 15px;
-      pointer-events: none;
-      z-index: 100002;
-    }
-
-    .drop {
-      position: fixed;
-      width: 6px; height: 6px;
-      border-radius: 50%;
-      background: rgb(223,30,99);
-      pointer-events: none;
-      z-index: 9999;
-      animation: fall var(--dur) linear forwards;
-      box-shadow: 0 0 6px rgba(223,30,99,.4);
-    }
-
-    @keyframes fall {
-      0% { opacity: 1; transform: translateY(0) }
-      100% { opacity: 0; transform: translateY(160px) }
-    }
+    @keyframes fall{0%{opacity:1; transform:translateY(0)}100%{opacity:0; transform:translateY(160px)}}
   </style>
 </head>
 <body>
-  <!-- Knife -->
+  <!-- Knife cursor -->
   <div class="knife" id="knife"></div>
 
-  <!-- Main site -->
+  <!-- Main content -->
   <div id="site" class="site">
-    <img src="https://cdn.discordapp.com/attachments/1117356079051964446/1424607076667097158/ZBzQzuI.gif" alt="undefeated gif">
+    <img src="/assets/undefeated.gif" alt="undefeated gif">
     <div>defeat</div>
-    <div class="marquee-container">
-      <div id="track"><span>jord ryan matt saph maly tyler</span></div>
+
+    <!-- Smooth one-pass marquee -->
+    <div class="marquee-container" id="names">
+      <div class="marquee-track" id="track">
+        <span class="marquee-text" id="namesText">jord ryan matt saph maly tyler</span>
+      </div>
     </div>
+
     <span>uneasy lies the head that wears the crown</span>
   </div>
 
-  <!-- Audio -->
-  <audio id="bg-music" loop playsinline preload="auto">
-    <source src="assets/what-you-had-capo.mp3" type="audio/mpeg">
-    <source src="assets/What-You-Had-Capo.mp3" type="audio/mpeg">
-    <source src="assets/What You Had - Capo.mp3" type="audio/mpeg">
-    Your browser does not support the audio element.
-  </audio>
-
+  <!-- Background music (resolved in JS; fades in slow) -->
+  <audio id="bg-music" loop playsinline preload="auto"></audio>
   <div id="music-controls" class="music-controls">
     <span id="song-name">🎵 Now Playing: What You Had – Capo</span>
-    <span>🔊</span>
+    <span class="volume-label">🔊</span>
     <input id="volume-slider" type="range" min="0" max="1" step="0.01" value="1">
   </div>
 
+  <!-- Stab SFX -->
   <audio id="sfx-stab" preload="auto">
-    <source src="assets/stab.mp3" type="audio/mpeg">
+    <source src="/assets/stab.mp3" type="audio/mpeg">
   </audio>
 
-  <!-- Enter -->
-  <div id="gate" class="gate">
+  <!-- Click-to-enter overlay -->
+  <div id="gate" class="gate" aria-label="Click to enter">
     <div class="gate-text">CLICK TO ENTER</div>
   </div>
 
   <script>
+  (function(){
+    /* ===== MUSIC: resolve + fade ===== */
     const music = document.getElementById('bg-music');
     const slider = document.getElementById('volume-slider');
     const controls = document.getElementById('music-controls');
-    const stab = document.getElementById('sfx-stab');
-    const site = document.getElementById('site');
-    const gate = document.getElementById('gate');
-    const knifeEl = document.getElementById('knife');
+    const SONG_TITLE = "What You Had – Capo";
 
-    const CLEAN_KNIFE_URL = "assets/knife-clean.png";
-    const BLOODY_KNIFE_URL = "assets/knife.png";
-    knifeEl.style.backgroundImage = `url(${CLEAN_KNIFE_URL})`;
-    knifeEl.style.transform = `rotate(var(--knife-angle))`;
+    const CANDIDATES = [
+      '/assets/what-you-had-capo.mp3',
+      '/assets/What-You-Had-Capo.mp3',
+      '/assets/What You Had - Capo.mp3',
+      '/assets/What%20You%20Had%20-%20Capo.mp3',
+      'https://cdn.jsdelivr.net/gh/rrrwly/anguish5@main/assets/what-you-had-capo.mp3',
+      'https://cdn.jsdelivr.net/gh/rrrwly/anguish5@main/assets/What-You-Had-Capo.mp3',
+      'https://cdn.jsdelivr.net/gh/rrrwly/anguish5@main/assets/What%20You%20Had%20-%20Capo.mp3'
+    ];
 
-    let mx = innerWidth / 2, my = innerHeight / 2;
-    function placeKnife(){ knifeEl.style.left = (mx - 35) + "px"; knifeEl.style.top = (my - 35) + "px"; }
+    async function probe(url){
+      try{ const r=await fetch(url,{method:'HEAD'}); return r.ok; }catch{ return false; }
+    }
+    async function resolveMusic(){
+      for(const u of CANDIDATES){ if(await probe(u)){ music.src=u; music.load(); return true; } }
+      return false;
+    }
+
+    let fadeInt=null;
+    function fadeTo(targetVol=Number(slider.value||1),ms=6000){
+      const steps=Math.max(1,Math.round(ms/50)); let i=0;
+      clearInterval(fadeInt); music.volume=0;
+      fadeInt=setInterval(()=>{ i++; music.volume=Math.min(targetVol,(i/steps)*targetVol);
+        if(i>=steps) clearInterval(fadeInt);
+      },50);
+    }
+
+    async function playMusicOnClick(){
+      if(!music.src) await resolveMusic();
+      if(!music.src) return;
+      try{
+        music.muted=false; await music.play();
+        fadeTo(); controls.classList.add('show');
+        document.getElementById('song-name').textContent="🎵 Now Playing: "+SONG_TITLE;
+      }catch(e){ console.warn('music.play() failed',e); }
+    }
+    slider.addEventListener('input',()=>{ music.volume=Number(slider.value); });
+
+    /* ===== KNIFE + DRIPS ===== */
+    const gate=document.getElementById('gate');
+    const site=document.getElementById('site');
+    const knifeEl=document.getElementById('knife');
+    const CLEAN_KNIFE_URL="/assets/knife-clean.png";
+    const BLOODY_KNIFE_URL="/assets/knife.png";
+    knifeEl.style.backgroundImage=`url(${CLEAN_KNIFE_URL})`;
+    knifeEl.style.transform=`rotate(var(--knife-angle))`;
+
+    let mx=innerWidth/2,my=innerHeight/2;
+    function placeKnife(){ knifeEl.style.left=(mx-35)+'px'; knifeEl.style.top=(my-35)+'px'; }
     placeKnife();
-    addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; placeKnife(); });
+    ['mousemove','touchmove','pointermove'].forEach(evt=>{
+      addEventListener(evt,e=>{
+        const p=e.touches?e.touches[0]:e; mx=p.clientX; my=p.clientY; placeKnife();
+      },{passive:true});
+    });
 
-    function fadeTo(targetVol = 1, ms = 6000) {
-      const steps = Math.max(1, Math.round(ms / 50));
-      let i = 0;
-      const iv = setInterval(() => {
-        i++;
-        music.volume = Math.min(targetVol, (i / steps) * targetVol);
-        if (i >= steps) clearInterval(iv);
-      }, 50);
-    }
-
-    async function playMusicSafe(){
-      try {
-        music.muted = false;
-        await music.play();
-        fadeTo();
-        controls.classList.add('show');
-      } catch(err) {
-        console.warn("Music autoplay blocked", err);
-      }
-    }
-
-    slider.addEventListener('input', () => { music.volume = Number(slider.value); });
-
-    function startDrips() {
-      const DRIP_INTERVAL_MS = 260, DRIP_JITTER = 3;
-      setInterval(() => {
-        const tipX = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--tip-x')) || 0.1;
-        const tipY = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--tip-y')) || 10;
-        const d = document.createElement('div');
-        d.className = 'drop';
-        const size = 3 + Math.random() * 3, dur = 1.4 + Math.random() * 2.0;
-        d.style.width = d.style.height = size + 'px';
-        d.style.setProperty('--dur', dur + 's');
-        d.style.opacity = 0.6 + Math.random() * 0.35;
-        const x = mx + tipX + (Math.random() * DRIP_JITTER - DRIP_JITTER / 2);
-        const y = my + tipY + (Math.random() * DRIP_JITTER - DRIP_JITTER / 2);
-        d.style.left = x + 'px'; d.style.top = y + 'px';
+    function startDrips(){
+      const DRIP_INTERVAL_MS=260,DRIP_JITTER=3;
+      setInterval(()=>{
+        const s=getComputedStyle(document.documentElement);
+        const tipX=parseFloat(s.getPropertyValue('--tip-x'))||0.1;
+        const tipY=parseFloat(s.getPropertyValue('--tip-y'))||10;
+        const d=document.createElement('div'); d.className='drop';
+        const size=3+Math.random()*3, dur=1.4+Math.random()*2.0;
+        d.style.width=d.style.height=size+'px';
+        d.style.setProperty('--dur',dur+'s');
+        d.style.opacity=0.6+Math.random()*0.35;
+        const x=mx+tipX+(Math.random()*DRIP_JITTER-DRIP_JITTER/2);
+        const y=my+tipY+(Math.random()*DRIP_JITTER-DRIP_JITTER/2);
+        d.style.left=x+'px'; d.style.top=y+'px';
         document.body.appendChild(d);
-        setTimeout(() => d.remove(), dur * 1000);
+        setTimeout(()=>d.remove(), dur*1000);
       }, DRIP_INTERVAL_MS);
     }
 
-    function stabAndSwapNow() {
-      return new Promise(resolve => {
-        stab.currentTime = 0;
-        stab.play().then(() => {
-          knifeEl.style.backgroundImage = `url(${BLOODY_KNIFE_URL})`;
-          startDrips();
-          resolve();
-        }).catch(() => {
-          knifeEl.style.backgroundImage = `url(${BLOODY_KNIFE_URL})`;
-          startDrips();
-          resolve();
-        });
+    const stab=document.getElementById('sfx-stab');
+    function stabAndSwapNow(){
+      return new Promise(resolve=>{
+        const onPlay=()=>{ knifeEl.style.backgroundImage=`url(${BLOODY_KNIFE_URL})`; startDrips(); resolve(); };
+        stab.addEventListener('play', onPlay, {once:true});
+        stab.currentTime=0; stab.play().catch(()=>{ onPlay(); });
       });
     }
 
-    gate.addEventListener('click', async () => {
-      await stabAndSwapNow();
-      playMusicSafe();
-      site.classList.add('clear');
-      gate.classList.add('hidden');
-    });
+    /* ===== One-pass marquee (smooth scroll, stop when fully visible) ===== */
+    function onePassMarquee(){
+      const container = document.getElementById('names');
+      const track     = document.getElementById('track');
+      const textEl    = document.getElementById('namesText');
+
+      // measure exact text width (off-DOM clone to avoid flicker)
+      const clone = textEl.cloneNode(true);
+      clone.style.cssText = 'position:absolute; visibility:hidden; white-space:nowrap; left:-9999px; top:-9999px;';
+      document.body.appendChild(clone);
+      const textWidth = Math.ceil(clone.offsetWidth);
+      document.body.removeChild(clone);
+
+      // final container width = full text width, capped
+      const finalWidth = Math.min(textWidth + 2, Math.floor(window.innerWidth * 0.9));
+      container.style.width = finalWidth + 'px';
+      container.style.visibility = 'visible';
+
+      // start just off-screen to the right; scroll to x=0 and stop
+      let x = finalWidth;
+      const speed = 60; // px/sec
+      let last = performance.now();
+
+      function step(ts){
+        const dt = (ts - last) / 1000; last = ts;
+        x -= speed * dt;
+        if (x <= 0){
+          track.style.transform = 'translateX(0px)';
+          return; // stop
+        }
+        track.style.transform = `translateX(${x}px)`;
+        requestAnimationFrame(step);
+      }
+
+      track.style.transform = `translateX(${x}px)`;
+      requestAnimationFrame(step);
+    }
+
+    /* ===== ENTRY ===== */
+    function enter(){
+      if (gate.classList.contains('hidden')) return;
+      playMusicOnClick();
+      stabAndSwapNow().then(()=>{
+        site.classList.add('clear');
+        gate.classList.add('hidden');
+        onePassMarquee();
+      });
+    }
+    gate.addEventListener('click', enter, {passive:true});
+    gate.addEventListener('touchstart', e=>{ e.preventDefault(); enter(); }, {passive:false});
+    addEventListener('keydown', e=>{ if (e.key === 'Enter') enter(); });
+
+    // Pre-resolve the music so it's ready on first click
+    resolveMusic();
+  })();
   </script>
 </body>
 </html>
