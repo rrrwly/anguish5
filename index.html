@@ -5,20 +5,20 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>defeat</title>
 
-  <!-- Discord / Open Graph: sword.png + gray line (no blue title) -->
+  <!-- Discord / Open Graph (skinny image, gray line text, no blue title) -->
   <meta property="og:type" content="website" />
-  <meta property="og:title" content="&#8203;"><!-- zero-width space hides blue title -->
+  <meta property="og:title" content="&#8203;"><!-- hide blue title -->
   <meta property="og:description" content="A Silent Throne Drenched in Power" />
   <meta property="og:url" content="https://defeat.rip/" />
-  <meta property="og:image" content="https://defeat.rip/assets/sword.png?v=16" />
+  <meta property="og:image" content="https://defeat.rip/assets/sword.png?v=17" />
   <meta property="og:image:type" content="image/png" />
   <meta property="og:image:width" content="400" />
   <meta property="og:image:height" content="600" />
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:image" content="https://defeat.rip/assets/sword.png?v=16" />
+  <meta name="twitter:image" content="https://defeat.rip/assets/sword.png?v=17" />
   <meta name="theme-color" content="#000000" />
 
-  <!-- Pixel font for the gate text only -->
+  <!-- Pixel font only for the gate text -->
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
 
   <style>
@@ -33,7 +33,7 @@
     .site{ filter:blur(16px); opacity:.85; transition:filter 1200ms ease, opacity 1200ms ease; pointer-events:none; }
     .site.clear{ filter:blur(0); opacity:1; pointer-events:auto; }
 
-    /* Gate */
+    /* Gate overlay */
     .gate{
       position:fixed; inset:0; background:rgba(255,255,255,.6);
       z-index:100010; display:grid; place-items:center; cursor:none;
@@ -46,7 +46,7 @@
     }
     @keyframes pulse{0%{opacity:.6}50%{opacity:1}100%{opacity:.6}}
 
-    /* Marquee */
+    /* Marquee (init on enter) */
     .marquee-container{
       overflow:hidden; box-sizing:border-box; font-size:14px; white-space:nowrap; text-align:center;
       visibility:hidden; margin-top:4px;
@@ -68,6 +68,7 @@
     #song-name{ font-size:12px; opacity:.8; }
 
     /* Knife + drips */
+    :root{ --tip-x:0.1px; --tip-y:10px; --knife-angle:-18deg; }
     .knife{
       position:fixed; width:60px; height:60px; left:0; top:0;
       background-size:contain; background-repeat:no-repeat; background-position:center;
@@ -83,7 +84,7 @@
   </style>
 </head>
 <body>
-  <!-- Cursor knife -->
+  <!-- Knife cursor -->
   <div class="knife" id="knife"></div>
 
   <!-- Main content (starts blurred) -->
@@ -97,7 +98,7 @@
     />
     <div>defeat</div>
 
-    <!-- Marquee (starts on enter, one pass, then stops with names shown) -->
+    <!-- Marquee (one pass; starts after enter) -->
     <div class="marquee-container" id="names">
       <div id="track"><span id="namesText">jord ryan matt saph maly tyler</span></div>
     </div>
@@ -106,7 +107,10 @@
   </div>
 
   <!-- Audio -->
-  <audio id="bg-music" loop playsinline preload="auto"></audio>
+  <audio id="bg-music" loop playsinline preload="auto">
+    <!-- set a default known-good src; we’ll still try fallbacks if playback fails -->
+    <source src="/assets/what-you-had-capo.mp3" type="audio/mpeg">
+  </audio>
   <div id="music-controls" class="music-controls">
     <span id="song-name">🎵 Now Playing: What You Had – Capo</span>
     <span class="volume-label">🔊</span>
@@ -123,13 +127,13 @@
 
   <script>
   document.addEventListener('DOMContentLoaded', () => {
-    /* Force initial state (blur on, gate visible) */
+    /* Force initial state */
     const site = document.getElementById('site');
     const gate = document.getElementById('gate');
     site.classList.remove('clear');
     gate.classList.remove('hidden');
 
-    /* ===== Music (robust + fade-in) ===== */
+    /* ===== Music ===== */
     const music = document.getElementById('bg-music');
     const slider = document.getElementById('volume-slider');
     const controls = document.getElementById('music-controls');
@@ -142,9 +146,16 @@
       '/assets/What%20You%20Had%20-%20Capo.mp3',
       'https://cdn.jsdelivr.net/gh/rrrwly/anguish5@main/assets/what-you-had-capo.mp3'
     ];
-    async function head(u){ try{ const r=await fetch(u,{method:'HEAD'}); return r.ok; }catch{ return false; } }
-    async function resolveMusic(){ for(const u of MUSIC_CANDIDATES){ if(await head(u)){ music.src=u; music.load(); return true; } } return false; }
-    resolveMusic();
+
+    // Try to swap source **only if** play fails (don’t block on HEAD)
+    async function tryFallbackSources(){
+      for(const u of MUSIC_CANDIDATES){
+        if (music.currentSrc.endsWith(u)) continue;
+        music.src = u;
+        try { await music.play(); return true; } catch {}
+      }
+      return false;
+    }
 
     let fadeTimer=null;
     function fadeTo(targetVol=Number(slider.value||1), ms=6000){
@@ -152,9 +163,20 @@
       const steps=Math.max(1,Math.round(ms/50)); let i=0;
       fadeTimer=setInterval(()=>{ i++; music.volume=Math.min(targetVol,(i/steps)*targetVol); if(i>=steps) clearInterval(fadeTimer); },50);
     }
+
     async function playMusic(){
-      try{ music.muted=false; await music.play(); fadeTo(); controls.classList.add('show'); document.getElementById('song-name').textContent="🎵 Now Playing: "+SONG_TITLE; }
-      catch(e){ console.warn('music.play blocked', e); }
+      try{
+        music.muted=false;
+        await music.play();
+        fadeTo();
+        controls.classList.add('show');
+        document.getElementById('song-name').textContent = "🎵 Now Playing: " + SONG_TITLE;
+      }catch(err){
+        // try other URLs if the first one fails
+        const ok = await tryFallbackSources();
+        if (ok){ fadeTo(); controls.classList.add('show'); }
+        else { console.warn('All music sources failed'); }
+      }
     }
     slider.addEventListener('input', ()=>{ music.volume=Number(slider.value); });
 
@@ -198,13 +220,12 @@
       });
     }
 
-    /* ===== One-pass marquee: start on enter, stop with names visible ===== */
+    /* ===== One-pass marquee (start on enter) ===== */
     function initMarquee(){
       const container = document.getElementById('names');
       const track     = document.getElementById('track');
       const textEl    = document.getElementById('namesText');
 
-      // Measure full text width
       const ghost = textEl.cloneNode(true);
       ghost.style.cssText='position:absolute; visibility:hidden; white-space:nowrap; left:-9999px; top:-9999px;';
       document.body.appendChild(ghost);
@@ -217,7 +238,7 @@
       container.style.width = viewportW + 'px';
       container.style.visibility = 'visible';
 
-      let x = viewportW;           // start off right edge
+      let x = viewportW;           // start off the right edge
       const speed = 60;            // px/sec
       let last = performance.now();
 
@@ -225,8 +246,8 @@
         const dt = (ts - last) / 1000; last = ts;
         x -= speed * dt;
         if (x <= 0){
-          track.style.transform = 'translateX(0px)';
-          container.style.width = viewportW + 'px'; // stop with visible list
+          track.style.transform = 'translateX(0px)'; // stop with names visible
+          container.style.width = viewportW + 'px';
           return;
         }
         track.style.transform = `translateX(${x}px)`;
@@ -239,13 +260,14 @@
     /* ===== Enter flow ===== */
     async function enter(){
       if (gate.classList.contains('hidden')) return;
-      await stabAndSwap();         // swap knife + start drips
-      await playMusic();           // start music (fade in)
-      site.classList.add('clear'); // unblur
-      gate.classList.add('hidden');
-      initMarquee();               // start marquee now (so it’s visible)
+      await stabAndSwap();
+      await playMusic();
+      site.classList.add('clear');   // unblur
+      gate.classList.add('hidden');  // hide overlay
+      initMarquee();                 // start marquee now
     }
 
+    // robust bindings (desktop + mobile + keyboard)
     ['pointerdown','click'].forEach(evt=>{
       gate.addEventListener(evt, (e)=>{ e.preventDefault(); enter(); }, {passive:false});
     });
