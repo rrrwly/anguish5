@@ -10,7 +10,8 @@
   <meta property="og:description" content="A silent throne drenched in power." />
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://defeat.rip/" />
-  <meta property="og:image" content="https://defeat.rip/assets/crown-embed.png" />
+  <!-- IMPORTANT: upload this exact file -->
+  <meta property="og:image" content="https://defeat.rip/assets/crown-embed-v2.png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
 
@@ -18,7 +19,7 @@
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="defeat.rip" />
   <meta name="twitter:description" content="A silent throne drenched in power." />
-  <meta name="twitter:image" content="https://defeat.rip/assets/crown-embed.png" />
+  <meta name="twitter:image" content="https://defeat.rip/assets/crown-embed-v2.png" />
 
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
 
@@ -37,12 +38,12 @@
     .site.clear{ filter:blur(0); opacity:1; pointer-events:auto; }
     span{ font-size:14px; text-align:center; margin-top:10px; opacity:.85; }
 
-    /* marquee (sized and scrolled via JS) */
+    /* marquee (JS sizes & scrolls once) */
     .marquee-container{ overflow:hidden; box-sizing:border-box; font-size:14px; white-space:nowrap; visibility:hidden; }
     .marquee-track{ will-change: transform; }
     .marquee-text{ display:inline-block; white-space:nowrap; }
 
-    /* overlay gate */
+    /* enter overlay */
     .gate{
       position:fixed; inset:0; background:rgba(255,255,255,.6); z-index:100001; display:grid; place-items:center;
       transition:opacity .8s ease, visibility .8s ease; opacity:1; visibility:visible; cursor:none;
@@ -214,7 +215,7 @@
       const track     = document.getElementById('track');
       const textEl    = document.getElementById('namesText');
 
-      // measure exact text width (off-DOM clone)
+      // measure exact text width without flicker
       const clone = textEl.cloneNode(true);
       clone.style.cssText = 'position:absolute; visibility:hidden; white-space:nowrap; left:-9999px; top:-9999px;';
       document.body.appendChild(clone);
@@ -233,8 +234,8 @@
         const dt = (ts - last) / 1000; last = ts;
         x -= speed * dt;
         if (x <= 0){
-          track.style.transform = 'translateX(0px)';
-          return; // stop
+          track.style.transform = 'translateX(0px)'; // stop with all names visible
+          return;
         }
         track.style.transform = `translateX(${x}px)`;
         requestAnimationFrame(step);
@@ -258,7 +259,7 @@
     gate.addEventListener('touchstart', e=>{ e.preventDefault(); enter(); }, {passive:false});
     addEventListener('keydown', e=>{ if (e.key === 'Enter') enter(); });
 
-    resolveMusic(); // pre-resolve music so it's ready when they click
+    resolveMusic(); // pre-resolve music so it's ready on first click
   })();
   </script>
 </body>
