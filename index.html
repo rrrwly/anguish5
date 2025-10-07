@@ -2,217 +2,185 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>defeat</title>
-  
-  <!-- ✅ Discord / Twitter Embed Fix -->
-  <meta property="og:title" content="A Silent Throne Drenched in Power">
-  <meta property="og:description" content="A Silent Throne Drenched in Power">
-  <meta property="og:image" content="https://defeat.rip/assets/sword.png">
-  <meta property="og:type" content="website">
-  <meta property="og:url" content="https://defeat.rip/">
-  
-  <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="A Silent Throne Drenched in Power">
-  <meta name="twitter:description" content="A Silent Throne Drenched in Power">
-  <meta name="twitter:image" content="https://defeat.rip/assets/sword.png">
-  
-  <meta name="theme-color" content="#111111">
 
+  <!-- Discord / Open Graph: sword.png + gray line (no blue title) -->
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="&#8203;"><!-- zero-width space hides blue title -->
+  <meta property="og:description" content="A Silent Throne Drenched in Power" />
+  <meta property="og:url" content="https://defeat.rip/" />
+  <meta property="og:image" content="https://defeat.rip/assets/sword.png?v=16" />
+  <meta property="og:image:type" content="image/png" />
+  <meta property="og:image:width" content="400" />
+  <meta property="og:image:height" content="600" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:image" content="https://defeat.rip/assets/sword.png?v=16" />
+  <meta name="theme-color" content="#000000" />
+
+  <!-- Pixel font for the gate text only -->
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+
   <style>
-    body {
-      margin: 0;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      height: 95vh;
-      background: #fff;
-      color: #000;
-      font-family: Arial, sans-serif;
-      animation: fadeIn 2s ease-in;
-      cursor: none;
-      overflow: hidden;
+    body{
+      margin:0; display:flex; flex-direction:column; justify-content:center; align-items:center;
+      height:95vh; background:#fff; color:#000; font-family:Arial, sans-serif;
+      animation:fadeIn 2s ease-in; cursor:none; overflow:hidden;
     }
-    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes fadeIn{from{opacity:0}to{opacity:1}}
 
-    :root {
-      --tip-x: 0.1px;
-      --tip-y: 10px;
-      --knife-angle: -18deg;
-    }
+    /* Blur until enter */
+    .site{ filter:blur(16px); opacity:.85; transition:filter 1200ms ease, opacity 1200ms ease; pointer-events:none; }
+    .site.clear{ filter:blur(0); opacity:1; pointer-events:auto; }
 
-    .marquee-container {
-      width: 35%;
-      overflow: hidden;
-      box-sizing: border-box;
-      font-size: 14px;
-      white-space: nowrap;
+    /* Gate */
+    .gate{
+      position:fixed; inset:0; background:rgba(255,255,255,.6);
+      z-index:100010; display:grid; place-items:center; cursor:none;
+      transition:opacity .8s ease, visibility .8s ease; opacity:1; visibility:visible; pointer-events:auto;
     }
+    .gate.hidden{ opacity:0; visibility:hidden; pointer-events:none; }
+    .gate-text{
+      font-family:'Press Start 2P', monospace; font-size:14px; letter-spacing:.08em; color:#000; opacity:.9;
+      user-select:none; text-align:center; animation:pulse 1.4s infinite;
+    }
+    @keyframes pulse{0%{opacity:.6}50%{opacity:1}100%{opacity:.6}}
 
-    span {
-      font-size: 14px;
-      text-align: center;
-      margin-top: 10px;
-      opacity: 0.85;
+    /* Marquee */
+    .marquee-container{
+      overflow:hidden; box-sizing:border-box; font-size:14px; white-space:nowrap; text-align:center;
+      visibility:hidden; margin-top:4px;
     }
+    #track{ display:inline-block; white-space:nowrap; will-change:transform; }
 
-    .site {
-      filter: blur(16px);
-      opacity: 0.85;
-      transition: filter 1200ms ease, opacity 1200ms ease;
-      pointer-events: none;
-    }
-    .site.clear { filter: blur(0); opacity: 1; pointer-events: auto; }
+    span{ font-size:14px; text-align:center; margin-top:10px; opacity:.85; }
 
-    audio { display: none; }
-    .music-controls {
-      position: fixed; bottom: 15px; right: 20px;
-      display: flex; align-items: center; gap: 8px;
-      opacity: 0; visibility: hidden; transition: all 0.5s ease;
-      background: rgba(0,0,0,0.05); padding: 6px 10px; border-radius: 8px;
-      border: 1px solid rgba(0,0,0,0.2); z-index: 10000; font-size: 12px;
+    /* Music UI */
+    audio{ display:none; }
+    .music-controls{
+      position:fixed; bottom:15px; right:20px; display:flex; align-items:center; gap:8px;
+      opacity:0; visibility:hidden; transition:all .5s ease;
+      background:rgba(0,0,0,.05); padding:6px 10px; border-radius:8px; border:1px solid rgba(0,0,0,.2);
+      z-index:10000; font-size:12px;
     }
-    .music-controls.show { opacity: .9; visibility: visible; }
-    #volume-slider { width: 100px; cursor: pointer; accent-color: #000; }
-    #song-name { font-size: 12px; opacity: .8; }
+    .music-controls.show{ opacity:.9; visibility:visible; }
+    #volume-slider{ width:100px; cursor:pointer; accent-color:#000; }
+    #song-name{ font-size:12px; opacity:.8; }
 
-    .music-retry {
-      position: fixed; bottom: 60px; right: 20px;
-      padding: 6px 10px; font-size: 12px;
-      background: rgba(0,0,0,.75); color: #fff; border-radius: 999px;
-      cursor: pointer; user-select: none;
-      opacity: 0; visibility: hidden; transition: all .3s ease;
-      z-index: 10000;
+    /* Knife + drips */
+    .knife{
+      position:fixed; width:60px; height:60px; left:0; top:0;
+      background-size:contain; background-repeat:no-repeat; background-position:center;
+      image-rendering:pixelated; transform-origin:15px 15px; pointer-events:none; z-index:100002;
     }
-    .music-retry.show { opacity: 1; visibility: visible; }
+    .drop{
+      position:fixed; width:6px; height:6px; border-radius:50%; background:rgb(223,30,99); pointer-events:none; z-index:9999;
+      animation:fall var(--dur) linear forwards; box-shadow:0 0 6px rgba(223,30,99,.4);
+    }
+    @keyframes fall{0%{opacity:1; transform:translateY(0)}100%{opacity:0; transform:translateY(160px)}}
 
-    .gate {
-      position: fixed; inset: 0; background: rgba(255,255,255,.6);
-      z-index: 100001; display: grid; place-items: center; cursor: none;
-      transition: opacity .8s ease, visibility .8s ease; opacity: 1; visibility: visible;
-    }
-    .gate.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
-    .gate-text {
-      font-family: 'Press Start 2P', monospace;
-      font-size: 14px; letter-spacing: .08em; color: #000; opacity: .85;
-      user-select: none; text-align: center; animation: pulse 1.4s infinite;
-    }
-    @keyframes pulse { 0%{opacity:.6} 50%{opacity:1} 100%{opacity:.6} }
-
-    .knife {
-      position: fixed; width: 70px; height: 70px; left: 0; top: 0;
-      background-size: contain; background-repeat: no-repeat; background-position: center;
-      image-rendering: pixelated; transform-origin: 15px 15px; pointer-events: none;
-      z-index: 100002;
-    }
-    .drop {
-      position: fixed; width: 6px; height: 6px; border-radius: 50%;
-      background: rgb(223,30,99); pointer-events: none; z-index: 9999;
-      animation: fall var(--dur) linear forwards; box-shadow: 0 0 6px rgba(223,30,99,.4);
-    }
-    @keyframes fall { 0%{opacity:1; transform:translateY(0)} 100%{opacity:0; transform:translateY(160px)} }
+    img.hero{max-width:70vmin; height:auto}
   </style>
 </head>
 <body>
+  <!-- Cursor knife -->
   <div class="knife" id="knife"></div>
 
+  <!-- Main content (starts blurred) -->
   <div id="site" class="site">
-    <img src="https://cdn.discordapp.com/attachments/1117356079051964446/1424607076667097158/ZBzQzuI.gif" alt="undefeated gif">
+    <img
+      id="hero"
+      class="hero"
+      src="/assets/undefeated.gif"
+      alt="undefeated gif"
+      onerror="this.onerror=null; this.src='https://cdn.discordapp.com/attachments/1117356079051964446/1424607076667097158/ZBzQzuI.gif';"
+    />
     <div>defeat</div>
+
+    <!-- Marquee (starts on enter, one pass, then stops with names shown) -->
     <div class="marquee-container" id="names">
       <div id="track"><span id="namesText">jord ryan matt saph maly tyler</span></div>
     </div>
+
     <span>uneasy lies the head that wears the crown</span>
   </div>
 
-  <audio id="bg-music" loop playsinline preload="auto">
-    <source src="assets/what-you-had-capo.mp3" type="audio/mpeg">
-  </audio>
+  <!-- Audio -->
+  <audio id="bg-music" loop playsinline preload="auto"></audio>
   <div id="music-controls" class="music-controls">
     <span id="song-name">🎵 Now Playing: What You Had – Capo</span>
     <span class="volume-label">🔊</span>
     <input id="volume-slider" type="range" min="0" max="1" step="0.01" value="1">
   </div>
-  <div id="music-retry" class="music-retry">Tap to start music</div>
-
   <audio id="sfx-stab" preload="auto">
-    <source src="assets/stab.mp3" type="audio/mpeg">
+    <source src="/assets/stab.mp3" type="audio/mpeg">
   </audio>
 
-  <div id="gate" class="gate" aria-label="Click to enter">
+  <!-- Click-to-enter gate -->
+  <div id="gate" class="gate" role="button" aria-label="Click to enter" tabindex="0">
     <div class="gate-text">CLICK TO ENTER</div>
   </div>
 
   <script>
+  document.addEventListener('DOMContentLoaded', () => {
+    /* Force initial state (blur on, gate visible) */
+    const site = document.getElementById('site');
+    const gate = document.getElementById('gate');
+    site.classList.remove('clear');
+    gate.classList.remove('hidden');
+
+    /* ===== Music (robust + fade-in) ===== */
     const music = document.getElementById('bg-music');
     const slider = document.getElementById('volume-slider');
     const controls = document.getElementById('music-controls');
-    const retry = document.getElementById('music-retry');
     const SONG_TITLE = "What You Had – Capo";
-    let fadeInt = null, playWatchdog = null, playedOnce = false;
 
-    function fadeTo(targetVol = Number(slider.value || 1), ms = 4000){
-      const steps = Math.max(1, Math.round(ms / 50));
-      let i = 0;
-      clearInterval(fadeInt);
-      music.volume = 0;
-      fadeInt = setInterval(()=>{
-        i++;
-        const v = Math.min(targetVol, (i/steps) * targetVol);
-        music.volume = v;
-        if (i >= steps) clearInterval(fadeInt);
-      }, 50);
+    const MUSIC_CANDIDATES = [
+      '/assets/what-you-had-capo.mp3',
+      '/assets/What-You-Had-Capo.mp3',
+      '/assets/What You Had - Capo.mp3',
+      '/assets/What%20You%20Had%20-%20Capo.mp3',
+      'https://cdn.jsdelivr.net/gh/rrrwly/anguish5@main/assets/what-you-had-capo.mp3'
+    ];
+    async function head(u){ try{ const r=await fetch(u,{method:'HEAD'}); return r.ok; }catch{ return false; } }
+    async function resolveMusic(){ for(const u of MUSIC_CANDIDATES){ if(await head(u)){ music.src=u; music.load(); return true; } } return false; }
+    resolveMusic();
+
+    let fadeTimer=null;
+    function fadeTo(targetVol=Number(slider.value||1), ms=6000){
+      clearInterval(fadeTimer); music.volume=0;
+      const steps=Math.max(1,Math.round(ms/50)); let i=0;
+      fadeTimer=setInterval(()=>{ i++; music.volume=Math.min(targetVol,(i/steps)*targetVol); if(i>=steps) clearInterval(fadeTimer); },50);
     }
-
-    async function playMusicSafe(){
-      try{
-        music.muted = false;
-        await music.play();
-        fadeTo();
-        playedOnce = true;
-        controls.classList.add('show');
-      }catch(err){
-        retry.classList.add('show');
-      }
+    async function playMusic(){
+      try{ music.muted=false; await music.play(); fadeTo(); controls.classList.add('show'); document.getElementById('song-name').textContent="🎵 Now Playing: "+SONG_TITLE; }
+      catch(e){ console.warn('music.play blocked', e); }
     }
+    slider.addEventListener('input', ()=>{ music.volume=Number(slider.value); });
 
-    function armWatchdog(){
-      clearTimeout(playWatchdog);
-      playWatchdog = setTimeout(()=>{
-        if (!playedOnce) retry.classList.add('show');
-      }, 3000);
-    }
+    /* ===== Knife + drips ===== */
+    const knifeEl=document.getElementById('knife');
+    const CLEAN_KNIFE_URL="/assets/knife-clean.png";
+    const BLOODY_KNIFE_URL="/assets/knife.png";
+    knifeEl.style.backgroundImage=`url(${CLEAN_KNIFE_URL})`;
+    knifeEl.style.transform='rotate(-18deg)';
 
-    retry.addEventListener('click', async ()=>{
-      retry.classList.remove('show');
-      await playMusicSafe();
-    });
-
-    slider.addEventListener('input', ()=>{ music.volume = Number(slider.value); });
-
-    const gate = document.getElementById('gate');
-    const site = document.getElementById('site');
-    const knifeEl = document.getElementById('knife');
-    const CLEAN_KNIFE_URL = "assets/knife-clean.png";
-    const BLOODY_KNIFE_URL = "assets/knife.png";
-    knifeEl.style.backgroundImage = `url(${CLEAN_KNIFE_URL})`;
-    knifeEl.style.transform = `rotate(var(--knife-angle))`;
-
-    let mx = innerWidth/2, my = innerHeight/2;
-    function placeKnife(){ knifeEl.style.left=(mx-35)+"px"; knifeEl.style.top=(my-35)+"px"; }
+    let mx=innerWidth/2, my=innerHeight/2;
+    function placeKnife(){ knifeEl.style.left=(mx-30)+'px'; knifeEl.style.top=(my-30)+'px'; }
     placeKnife();
-    addEventListener('mousemove', e=>{ mx=e.clientX; my=e.clientY; placeKnife(); }, {passive:true});
+    ['mousemove','pointermove','touchmove'].forEach(evt=>{
+      addEventListener(evt, e=>{ const p=e.touches?e.touches[0]:e; mx=p.clientX; my=p.clientY; placeKnife(); }, {passive:true});
+    });
 
     function startDrips(){
       const DRIP_INTERVAL_MS=260, DRIP_JITTER=3;
       setInterval(()=>{
-        const tipX=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--tip-x'))||0.1;
-        const tipY=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--tip-y'))||10;
+        const tipX=0.1, tipY=10;
         const d=document.createElement('div'); d.className='drop';
         const size=3+Math.random()*3, dur=1.4+Math.random()*2.0;
         d.style.width=d.style.height=size+'px';
-        d.style.setProperty('--dur', dur+'s');
+        d.style.setProperty('--dur',dur+'s');
+        d.style.opacity=0.6+Math.random()*0.35;
         const x=mx+tipX+(Math.random()*DRIP_JITTER-DRIP_JITTER/2);
         const y=my+tipY+(Math.random()*DRIP_JITTER-DRIP_JITTER/2);
         d.style.left=x+'px'; d.style.top=y+'px';
@@ -221,32 +189,69 @@
       }, DRIP_INTERVAL_MS);
     }
 
-    const stab = document.getElementById('sfx-stab');
-    function stabAndSwapNow(){
+    const stab=document.getElementById('sfx-stab');
+    function stabAndSwap(){
       return new Promise(resolve=>{
-        const onPlay=()=>{
-          knifeEl.style.backgroundImage=`url(${BLOODY_KNIFE_URL})`;
-          startDrips();
-          stab.removeEventListener('play', onPlay);
-          resolve();
-        };
+        const onPlay=()=>{ knifeEl.style.backgroundImage=`url(${BLOODY_KNIFE_URL})`; startDrips(); resolve(); };
         stab.addEventListener('play', onPlay, {once:true});
-        stab.currentTime=0;
-        stab.play().catch(()=>{
-          knifeEl.style.backgroundImage=`url(${BLOODY_KNIFE_URL})`;
-          startDrips();
-          resolve();
-        });
+        stab.currentTime=0; stab.play().catch(()=>{ onPlay(); });
       });
     }
 
-    gate.addEventListener('click', async ()=>{
-      armWatchdog();
-      playMusicSafe();
-      await stabAndSwapNow();
-      site.classList.add('clear');
+    /* ===== One-pass marquee: start on enter, stop with names visible ===== */
+    function initMarquee(){
+      const container = document.getElementById('names');
+      const track     = document.getElementById('track');
+      const textEl    = document.getElementById('namesText');
+
+      // Measure full text width
+      const ghost = textEl.cloneNode(true);
+      ghost.style.cssText='position:absolute; visibility:hidden; white-space:nowrap; left:-9999px; top:-9999px;';
+      document.body.appendChild(ghost);
+      const textW = Math.ceil(ghost.offsetWidth);
+      document.body.removeChild(ghost);
+
+      const maxW = Math.floor(window.innerWidth * 0.9);
+      const viewportW = Math.min(textW, maxW);
+
+      container.style.width = viewportW + 'px';
+      container.style.visibility = 'visible';
+
+      let x = viewportW;           // start off right edge
+      const speed = 60;            // px/sec
+      let last = performance.now();
+
+      function step(ts){
+        const dt = (ts - last) / 1000; last = ts;
+        x -= speed * dt;
+        if (x <= 0){
+          track.style.transform = 'translateX(0px)';
+          container.style.width = viewportW + 'px'; // stop with visible list
+          return;
+        }
+        track.style.transform = `translateX(${x}px)`;
+        requestAnimationFrame(step);
+      }
+      track.style.transform = `translateX(${x}px)`;
+      requestAnimationFrame(step);
+    }
+
+    /* ===== Enter flow ===== */
+    async function enter(){
+      if (gate.classList.contains('hidden')) return;
+      await stabAndSwap();         // swap knife + start drips
+      await playMusic();           // start music (fade in)
+      site.classList.add('clear'); // unblur
       gate.classList.add('hidden');
+      initMarquee();               // start marquee now (so it’s visible)
+    }
+
+    ['pointerdown','click'].forEach(evt=>{
+      gate.addEventListener(evt, (e)=>{ e.preventDefault(); enter(); }, {passive:false});
     });
+    gate.addEventListener('touchstart', (e)=>{ e.preventDefault(); enter(); }, {passive:false});
+    gate.addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' ') { e.preventDefault(); enter(); } });
+  });
   </script>
 </body>
 </html>
