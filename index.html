@@ -172,4 +172,101 @@
     let fadeInt = null, playWatchdog = null, playedOnce = false;
 
     function fadeTo(targetVol = Number(slider.value || 1), ms = 5000){
-      const steps = Math.max(1, Math.
+      const steps = Math.max(1, Math.round(ms / 50));
+      let i = 0;
+      clearInterval(fadeInt);
+      music.volume = 0;
+      fadeInt = setInterval(()=>{
+        i++;
+        const v = Math.min(targetVol, (i/steps) * targetVol);
+        music.volume = v;
+        if (i >= steps) clearInterval(fadeInt);
+      }, 50);
+    }
+
+    async function playMusicSafe(){
+      try{
+        music.muted = false;
+        await music.play();
+        fadeTo();
+        playedOnce = true;
+        controls.classList.add('show');
+      }catch(err){
+        retry.classList.add('show');
+      }
+    }
+
+    function armWatchdog(){
+      clearTimeout(playWatchdog);
+      playWatchdog = setTimeout(()=>{
+        if (!playedOnce) retry.classList.add('show');
+      }, 3000);
+    }
+
+    retry.addEventListener('click', async ()=>{
+      retry.classList.remove('show');
+      await playMusicSafe();
+    });
+
+    slider.addEventListener('input', ()=>{ music.volume = Number(slider.value); });
+
+    const gate = document.getElementById('gate');
+    const site = document.getElementById('site');
+    const knifeEl = document.getElementById('knife');
+    const CLEAN_KNIFE_URL = "assets/knife-clean.png";
+    const BLOODY_KNIFE_URL = "assets/knife.png";
+    knifeEl.style.backgroundImage = `url(${CLEAN_KNIFE_URL})`;
+    knifeEl.style.transform = `rotate(var(--knife-angle))`;
+
+    let mx = innerWidth/2, my = innerHeight/2;
+    function placeKnife(){ knifeEl.style.left=(mx-35)+"px"; knifeEl.style.top=(my-35)+"px"; }
+    placeKnife();
+    addEventListener('mousemove', e=>{ mx=e.clientX; my=e.clientY; placeKnife(); }, {passive:true});
+
+    function startDrips(){
+      const DRIP_INTERVAL_MS=260, DRIP_JITTER=3;
+      setInterval(()=>{
+        const tipX=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--tip-x'))||0.1;
+        const tipY=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--tip-y'))||10;
+        const d=document.createElement('div'); d.className='drop';
+        const size=3+Math.random()*3, dur=1.4+Math.random()*2.0;
+        d.style.width=d.style.height=size+'px';
+        d.style.setProperty('--dur', dur+'s');
+        d.style.opacity=0.6+Math.random()*0.35;
+        const x=mx+tipX+(Math.random()*DRIP_JITTER-DRIP_JITTER/2);
+        const y=my+tipY+(Math.random()*DRIP_JITTER-DRIP_JITTER/2);
+        d.style.left=x+'px'; d.style.top=y+'px';
+        document.body.appendChild(d);
+        setTimeout(()=>d.remove(), dur*1000);
+      }, DRIP_INTERVAL_MS);
+    }
+
+    const stab = document.getElementById('sfx-stab');
+    function stabAndSwapNow(){
+      return new Promise(resolve=>{
+        const onPlay=()=>{
+          knifeEl.style.backgroundImage=`url(${BLOODY_KNIFE_URL})`;
+          startDrips();
+          stab.removeEventListener('play', onPlay);
+          resolve();
+        };
+        stab.addEventListener('play', onPlay, {once:true});
+        stab.currentTime=0;
+        stab.play().catch(()=>{
+          knifeEl.style.backgroundImage=`url(${BLOODY_KNIFE_URL})`;
+          startDrips();
+          resolve();
+        });
+      });
+    }
+
+    gate.addEventListener('click', async ()=>{
+      armWatchdog();
+      playMusicSafe();
+      await stabAndSwapNow();
+      site.classList.add('clear');
+      gate.classList.add('hidden');
+    });
+  </script>
+</body>
+</html>
