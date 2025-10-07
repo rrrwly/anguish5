@@ -5,20 +5,9 @@
   <title>defeat</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-  <!-- Discord / Open Graph Embed -->
+  <!-- Discord / Open Graph Embed (TEXT ONLY) -->
   <meta property="og:title" content="defeat.rip" />
-  <meta property="og:description" content="A silent throne drenched in power.
-
-     /\
-    /**\
-   /****\
-  /******\
-  |******|
-  |******|
-   \****/
-    \**/
-     \/
-" />
+  <meta property="og:description" content="A silent throne drenched in power." />
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://defeat.rip/" />
   <meta property="og:image" content="https://defeat.rip/assets/crown-embed.png" />
@@ -28,18 +17,7 @@
   <!-- Twitter Card fallback -->
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:title" content="defeat.rip" />
-  <meta name="twitter:description" content="A silent throne drenched in power.
-
-     /\
-    /**\
-   /****\
-  /******\
-  |******|
-  |******|
-   \****/
-    \**/
-     \/
-" />
+  <meta name="twitter:description" content="A silent throne drenched in power." />
   <meta name="twitter:image" content="https://defeat.rip/assets/crown-embed.png" />
 
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
@@ -236,19 +214,17 @@
       const track     = document.getElementById('track');
       const textEl    = document.getElementById('namesText');
 
-      // measure exact text width (off-DOM clone to avoid flicker)
+      // measure exact text width (off-DOM clone)
       const clone = textEl.cloneNode(true);
       clone.style.cssText = 'position:absolute; visibility:hidden; white-space:nowrap; left:-9999px; top:-9999px;';
       document.body.appendChild(clone);
       const textWidth = Math.ceil(clone.offsetWidth);
       document.body.removeChild(clone);
 
-      // final container width = full text width, capped
       const finalWidth = Math.min(textWidth + 2, Math.floor(window.innerWidth * 0.9));
       container.style.width = finalWidth + 'px';
       container.style.visibility = 'visible';
 
-      // start just off-screen to the right; scroll to x=0 and stop
       let x = finalWidth;
       const speed = 60; // px/sec
       let last = performance.now();
@@ -282,8 +258,7 @@
     gate.addEventListener('touchstart', e=>{ e.preventDefault(); enter(); }, {passive:false});
     addEventListener('keydown', e=>{ if (e.key === 'Enter') enter(); });
 
-    // Pre-resolve the music so it's ready on first click
-    resolveMusic();
+    resolveMusic(); // pre-resolve music so it's ready when they click
   })();
   </script>
 </body>
