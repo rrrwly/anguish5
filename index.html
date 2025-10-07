@@ -135,13 +135,14 @@
     site.classList.remove('clear');
     gate.classList.remove('hidden');
 
-    /* ===== Music ===== */
+    /* ===== Music (fixed) ===== */
     const music = document.getElementById('bg-music');
     const slider = document.getElementById('volume-slider');
     const controls = document.getElementById('music-controls');
     const songName = document.getElementById('song-name');
     const SONG_TITLE = "What You Had – Capo";
 
+    // Strongest first: your local file; then variants/CDN
     const MUSIC_CANDIDATES = [
       '/assets/what-you-had-capo.mp3',
       '/assets/What-You-Had-Capo.mp3',
@@ -156,38 +157,36 @@
       const t = setInterval(()=>{ i++; music.volume = Math.min(targetVol, (i/steps)*targetVol); if(i>=steps) clearInterval(t); }, 50);
     }
 
-    // Try fallbacks only if the first play fails
-    async function tryFallbackSources(){
-      for(const u of MUSIC_CANDIDATES){
-        if (music.currentSrc && music.currentSrc.endsWith(u)) continue;
-        music.src = u;
-        try { await music.play(); return true; } catch(e) {}
-      }
-      return false;
-    }
-
-    // Start music immediately in the gesture call stack
-    function startMusicInGesture(){
-      try{
-        music.muted = false;
-        const p = music.play();
-        if (p && typeof p.then === 'function'){
-          p.then(()=>{
-            fadeTo(); controls.classList.add('show'); songName.textContent = "🎵 Now Playing: " + SONG_TITLE;
-          }).catch(async ()=>{
-            const ok = await tryFallbackSources();
-            if (ok){ fadeTo(); controls.classList.add('show'); songName.textContent = "🎵 Now Playing: " + SONG_TITLE; }
-          });
-        }else{
-          // older browsers
-          fadeTo(); controls.classList.add('show'); songName.textContent = "🎵 Now Playing: " + SONG_TITLE;
+    // Try each candidate synchronously within the same user gesture
+    async function playFirstWorkingSourceInGesture(){
+      for (const url of MUSIC_CANDIDATES){
+        try{
+          if (music.src !== url) {
+            music.src = url;
+            // Ensures iOS actually binds the buffer before play()
+            music.load();
+            music.currentTime = 0;
+          }
+          const p = music.play();
+          if (p && typeof p.then === 'function'){
+            await p; // success
+          }
+          // if we got here, it's playing
+          fadeTo();
+          controls.classList.add('show');
+          songName.textContent = "🎵 Now Playing: " + SONG_TITLE;
+          return true;
+        }catch(e){
+          // try next candidate
         }
-      }catch(e){}
+      }
+      console.warn('All music sources failed to start.');
+      return false;
     }
 
     slider.addEventListener('input', ()=>{ music.volume = Number(slider.value); });
 
-    /* ===== Knife + drips ===== */
+    /* ===== Knife + drips (unchanged) ===== */
     const knifeEl=document.getElementById('knife');
     const CLEAN_KNIFE_URL="/assets/knife-clean.png";
     const BLOODY_KNIFE_URL="/assets/knife.png";
@@ -229,7 +228,7 @@
       }catch(e){ onPlay(); }
     }
 
-    /* ===== One-pass marquee (start on enter) ===== */
+    /* ===== One-pass marquee (unchanged) ===== */
     function initMarquee(){
       const container = document.getElementById('names');
       const track     = document.getElementById('track');
@@ -266,36 +265,30 @@
       requestAnimationFrame(step);
     }
 
-    /* ===== Enter flow (sync in user-gesture) ===== */
+    /* ===== Enter flow (sync in gesture) ===== */
     let entered = false;
     function startExperience(){
       if (entered) return;
       entered = true;
 
-      // 1) Start audio immediately in gesture stack
-      startMusicInGesture();
-
-      // 2) Play stab SFX and swap knife immediately
+      // Start both audio actions inside the same user gesture
       playStabAndSwapInGesture();
+      playFirstWorkingSourceInGesture();
 
-      // 3) Reveal site now (CSS transitions handle blur-out)
-      site.classList.add('clear');
-      gate.classList.add('hidden');
-
-      // 4) Kick off marquee after layout settles
+      site.classList.add('clear');   // unblur
+      gate.classList.add('hidden');  // hide overlay
       requestAnimationFrame(()=> initMarquee());
     }
 
-    // Bind robustly on gate and button (do not preventDefault to keep gesture intact)
+    // Robust bindings; keep passive true to not interfere with gesture
     ['pointerdown','click','touchstart','mousedown','mouseup','pointerup','touchend'].forEach(evt=>{
       gate.addEventListener(evt, startExperience, {passive:true});
       gateBtn.addEventListener(evt, startExperience, {passive:true});
     });
 
     // Safety net: first gesture anywhere on the page (capture)
-    const firstGesture = (e) => {
+    const firstGesture = () => {
       if (!entered) startExperience();
-      // remove after first fire
       ['pointerdown','click','touchstart','mousedown','keydown'].forEach(ev=>{
         document.removeEventListener(ev, firstGesture, true);
       });
@@ -304,7 +297,7 @@
       document.addEventListener(ev, firstGesture, true);
     });
 
-    // Keyboard accessibility while gate visible
+    // Keyboard fallback
     document.addEventListener('keydown', (e)=> {
       if ((e.key==='Enter' || e.key===' ') && !entered) startExperience();
     });
