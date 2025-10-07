@@ -5,7 +5,7 @@
   <title>defeat</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-  <!-- Social / Discord embed (uses your rendered sword image) -->
+  <!-- Social / Discord embed (uses your sword image) -->
   <meta property="og:title" content="A Silent Throne Drenched in Power" />
   <meta property="og:description" content="A throne forged from silence and strength." />
   <meta property="og:type" content="website" />
@@ -14,11 +14,10 @@
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="theme-color" content="#000000" />
 
-  <!-- Pixel font for the gate text only -->
+  <!-- Gate font (only for 'CLICK TO ENTER') -->
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
 
   <style>
-    /* ===== Base page ===== */
     body{
       margin:0; display:flex; flex-direction:column; justify-content:center; align-items:center;
       height:95vh; background:#fff; color:#000; font-family:Arial, sans-serif;
@@ -26,20 +25,17 @@
     }
     @keyframes fadeIn{from{opacity:0}to{opacity:1}}
 
-    /* Cursor drip tip alignment (what you asked for earlier) */
     :root{ --tip-x:0.1px; --tip-y:10px; --knife-angle:-18deg; }
 
-    /* Main content (starts blurred) */
     .site{ filter:blur(16px); opacity:.85; transition:filter 1200ms ease, opacity 1200ms ease; pointer-events:none; }
     .site.clear{ filter:blur(0); opacity:1; pointer-events:auto; }
 
-    /* Original layout bits */
     .marquee-container{ overflow:hidden; box-sizing:border-box; font-size:14px; white-space:nowrap; visibility:hidden; }
     .marquee-track{ will-change: transform; }
     .marquee-text{ display:inline-block; white-space:nowrap; }
+
     span{ font-size:14px; text-align:center; margin-top:10px; opacity:.85; }
 
-    /* Enter overlay */
     .gate{
       position:fixed; inset:0; background:rgba(255,255,255,.6); z-index:100001; display:grid; place-items:center;
       transition:opacity .8s ease, visibility .8s ease; opacity:1; visibility:visible; cursor:none;
@@ -51,7 +47,6 @@
     }
     @keyframes pulse{0%{opacity:.6}50%{opacity:1}100%{opacity:.6}}
 
-    /* Music UI (hidden until playing) */
     audio{ display:none; }
     .music-controls{
       position:fixed; bottom:15px; right:20px; display:flex; align-items:center; gap:8px;
@@ -63,7 +58,13 @@
     #volume-slider{ width:100px; cursor:pointer; accent-color:#000; }
     #song-name{ font-size:12px; opacity:.8; }
 
-    /* Knife cursor + blood drops */
+    .music-retry{
+      position:fixed; bottom:60px; right:20px; padding:6px 10px; font-size:12px;
+      background:rgba(0,0,0,.75); color:#fff; border-radius:999px; cursor:pointer; user-select:none;
+      opacity:0; visibility:hidden; transition:all .3s ease; z-index:10000;
+    }
+    .music-retry.show{ opacity:1; visibility:visible; }
+
     .knife{
       position:fixed; width:70px; height:70px; left:0; top:0;
       background-size:contain; background-repeat:no-repeat; background-position:center;
@@ -75,58 +76,99 @@
     }
     @keyframes fall{0%{opacity:1; transform:translateY(0)}100%{opacity:0; transform:translateY(160px)}}
 
-    /* (Optional) Preload sword image in-page without displaying it */
     .preload{position:absolute; width:1px; height:1px; left:-9999px; top:-9999px; opacity:0}
+    img.hero{max-width:70vmin; height:auto}
   </style>
 </head>
 <body>
-  <!-- Cursor knife -->
+  <!-- cursor knife -->
   <div class="knife" id="knife"></div>
 
-  <!-- Page content (kept exactly like the original positioning) -->
+  <!-- content -->
   <div id="site" class="site">
-    <img src="https://cdn.discordapp.com/attachments/1117356079051964446/1424607076667097158/ZBzQzuI.gif" alt="undefeated gif">
+    <!-- Use local GIF with a fallback to the old Discord CDN URL -->
+    <img
+      id="hero"
+      class="hero"
+      src="/assets/undefeated.gif"
+      alt="undefeated gif"
+      onerror="this.onerror=null; this.src='https://cdn.discordapp.com/attachments/1117356079051964446/1424607076667097158/ZBzQzuI.gif';"
+    />
     <div>defeat</div>
+
+    <!-- One-pass marquee -->
     <div class="marquee-container" id="names">
       <div class="marquee-track" id="track">
         <span class="marquee-text" id="namesText">jord ryan matt saph maly tyler</span>
       </div>
     </div>
+
     <span>uneasy lies the head that wears the crown</span>
   </div>
 
-  <!-- Music -->
-  <audio id="bg-music" loop playsinline preload="auto">
-    <source src="/assets/what-you-had-capo.mp3" type="audio/mpeg">
-  </audio>
+  <!-- audio -->
+  <audio id="bg-music" loop playsinline preload="auto"></audio>
   <div id="music-controls" class="music-controls">
     <span id="song-name">🎵 Now Playing: What You Had – Capo</span>
     <span class="volume-label">🔊</span>
     <input id="volume-slider" type="range" min="0" max="1" step="0.01" value="1">
   </div>
+  <div id="music-retry" class="music-retry">Tap to start music</div>
 
-  <!-- Stab SFX -->
   <audio id="sfx-stab" preload="auto">
     <source src="/assets/stab.mp3" type="audio/mpeg">
   </audio>
 
-  <!-- Click-to-enter gate -->
+  <!-- gate -->
   <div id="gate" class="gate" aria-label="Click to enter">
     <div class="gate-text">CLICK TO ENTER</div>
   </div>
 
-  <!-- Preload the sword image for the embed (not shown on page) -->
+  <!-- (optional) preload sword image for embed -->
   <img class="preload" src="/assets/ascii_sword_final.png" alt="sword embed">
 
   <script>
   (function(){
-    /* ===== Music: slow fade so the stab is heard ===== */
+    /* ===== Robust music loader with fallbacks + logging ===== */
     const music = document.getElementById('bg-music');
     const slider = document.getElementById('volume-slider');
     const controls = document.getElementById('music-controls');
+    const retry = document.getElementById('music-retry');
     const SONG_TITLE = "What You Had – Capo";
-    let fadeInt=null;
 
+    const CANDIDATES = [
+      '/assets/what-you-had-capo.mp3',
+      '/assets/What-You-Had-Capo.mp3',
+      '/assets/What You Had - Capo.mp3',
+      '/assets/What%20You%20Had%20-%20Capo.mp3',
+      'https://cdn.jsdelivr.net/gh/rrrwly/anguish5@main/assets/what-you-had-capo.mp3',
+      'https://cdn.jsdelivr.net/gh/rrrwly/anguish5@main/assets/What-You-Had-Capo.mp3',
+      'https://cdn.jsdelivr.net/gh/rrrwly/anguish5@main/assets/What%20You%20Had%20-%20Capo.mp3'
+    ];
+
+    async function head(url){
+      try{
+        const r = await fetch(url, { method:'HEAD' });
+        console.log('[probe]', url, r.status, r.ok ? 'OK' : 'FAIL');
+        return r.ok;
+      }catch(e){
+        console.warn('[probe-error]', url, e);
+        return false;
+      }
+    }
+    async function resolveMusic(){
+      for(const u of CANDIDATES){
+        if(await head(u)){
+          music.src = u; music.load();
+          console.log('[music] using', u);
+          return true;
+        }
+      }
+      console.error('[music] no reachable candidate. Check /assets path & filename.');
+      return false;
+    }
+
+    let fadeInt=null, playedOnce=false;
     function fadeTo(targetVol=Number(slider.value||1), ms=6000){
       const steps=Math.max(1,Math.round(ms/50)); let i=0;
       clearInterval(fadeInt); music.volume=0;
@@ -135,10 +177,18 @@
       },50);
     }
     async function playMusicOnClick(){
-      try{ music.muted=false; await music.play(); fadeTo(); controls.classList.add('show'); }
-      catch(e){ console.warn('music.play blocked', e); /* gate click usually satisfies this */ }
+      if(!music.src){ const ok = await resolveMusic(); if(!ok) { retry.classList.add('show'); return; } }
+      try{
+        music.muted=false; await music.play();
+        fadeTo(); controls.classList.add('show'); playedOnce=true;
+        document.getElementById('song-name').textContent = "🎵 Now Playing: " + SONG_TITLE;
+      }catch(e){
+        console.warn('music.play blocked', e);
+        retry.classList.add('show');
+      }
     }
-    slider.addEventListener('input',()=>{ music.volume=Number(slider.value); });
+    slider.addEventListener('input', ()=>{ music.volume = Number(slider.value); });
+    retry.addEventListener('click', async ()=>{ retry.classList.remove('show'); await playMusicOnClick(); });
 
     /* ===== Knife + drips ===== */
     const gate=document.getElementById('gate');
@@ -149,17 +199,17 @@
     knifeEl.style.backgroundImage=`url(${CLEAN_KNIFE_URL})`;
     knifeEl.style.transform=`rotate(var(--knife-angle))`;
 
-    let mx=innerWidth/2,my=innerHeight/2;
+    let mx=innerWidth/2, my=innerHeight/2;
     function placeKnife(){ knifeEl.style.left=(mx-35)+'px'; knifeEl.style.top=(my-35)+'px'; }
     placeKnife();
     ['mousemove','touchmove','pointermove'].forEach(evt=>{
-      addEventListener(evt,e=>{
+      addEventListener(evt, e=>{
         const p=e.touches?e.touches[0]:e; mx=p.clientX; my=p.clientY; placeKnife();
-      },{passive:true});
+      }, {passive:true});
     });
 
     function startDrips(){
-      const DRIP_INTERVAL_MS=260,DRIP_JITTER=3;
+      const DRIP_INTERVAL_MS=260, DRIP_JITTER=3;
       setInterval(()=>{
         const s=getComputedStyle(document.documentElement);
         const tipX=parseFloat(s.getPropertyValue('--tip-x'))||0.1;
@@ -177,7 +227,7 @@
       }, DRIP_INTERVAL_MS);
     }
 
-    // Stab sound triggers the blood swap + drips immediately at sound start
+    /* Stab → swap to bloody knife & start drips immediately when SFX starts */
     const stab=document.getElementById('sfx-stab');
     function stabAndSwapNow(){
       return new Promise(resolve=>{
@@ -187,20 +237,19 @@
       });
     }
 
-    /* ===== One-pass marquee: scroll once then stop with all names visible ===== */
+    /* One-pass marquee: scroll once then stop with all names visible */
     function onePassMarquee(){
       const container = document.getElementById('names');
       const track     = document.getElementById('track');
       const textEl    = document.getElementById('namesText');
 
-      // measure exact text width without flicker
       const clone = textEl.cloneNode(true);
       clone.style.cssText = 'position:absolute; visibility:hidden; white-space:nowrap; left:-9999px; top:-9999px;';
       document.body.appendChild(clone);
       const textWidth = Math.ceil(clone.offsetWidth);
       document.body.removeChild(clone);
 
-      const finalWidth = Math.min(textWidth + 2, Math.floor(window.innerWidth * 0.9)); // show a bit more but not too wide
+      const finalWidth = Math.min(textWidth + 2, Math.floor(window.innerWidth * 0.9));
       container.style.width = finalWidth + 'px';
       container.style.visibility = 'visible';
 
@@ -211,10 +260,7 @@
       function step(ts){
         const dt = (ts - last) / 1000; last = ts;
         x -= speed * dt;
-        if (x <= 0){
-          track.style.transform = 'translateX(0px)'; // stop fully visible
-          return;
-        }
+        if (x <= 0){ track.style.transform = 'translateX(0px)'; return; }
         track.style.transform = `translateX(${x}px)`;
         requestAnimationFrame(step);
       }
@@ -222,20 +268,21 @@
       requestAnimationFrame(step);
     }
 
-    /* ===== Entry sequence ===== */
-    function enter(){
+    /* ENTRY */
+    async function enter(){
       if (gate.classList.contains('hidden')) return;
-      playMusicOnClick();           // start bg music (fades in slowly)
-      stabAndSwapNow().then(()=>{   // play stab + swap to bloody knife + start drips
-        site.classList.add('clear');
-        gate.classList.add('hidden');
-        onePassMarquee();
-      });
+      playMusicOnClick();           // start bg music (under user gesture)
+      await stabAndSwapNow();       // stab + swap to bloody + start drips
+      site.classList.add('clear');  // unblur content
+      gate.classList.add('hidden');
+      onePassMarquee();
     }
     gate.addEventListener('click', enter, {passive:true});
     gate.addEventListener('touchstart', e=>{ e.preventDefault(); enter(); }, {passive:false});
     addEventListener('keydown', e=>{ if (e.key === 'Enter') enter(); });
 
+    // Pre-resolve the music so it's ready on first click
+    resolveMusic();
   })();
   </script>
 </body>
