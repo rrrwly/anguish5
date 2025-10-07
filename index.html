@@ -128,7 +128,7 @@
 
   <script>
   document.addEventListener('DOMContentLoaded', () => {
-    /* Force initial state */
+    /* Initial state */
     const site = document.getElementById('site');
     const gate = document.getElementById('gate');
     const gateBtn = document.getElementById('gateBtn');
@@ -139,6 +139,7 @@
     const music = document.getElementById('bg-music');
     const slider = document.getElementById('volume-slider');
     const controls = document.getElementById('music-controls');
+    const songName = document.getElementById('song-name');
     const SONG_TITLE = "What You Had – Capo";
 
     const MUSIC_CANDIDATES = [
@@ -149,36 +150,42 @@
       'https://cdn.jsdelivr.net/gh/rrrwly/anguish5@main/assets/what-you-had-capo.mp3'
     ];
 
+    function fadeTo(targetVol = Number(slider.value || 1), ms = 6000){
+      let i = 0; const steps = Math.max(1, Math.round(ms/50));
+      music.volume = 0;
+      const t = setInterval(()=>{ i++; music.volume = Math.min(targetVol, (i/steps)*targetVol); if(i>=steps) clearInterval(t); }, 50);
+    }
+
+    // Try fallbacks only if the first play fails
     async function tryFallbackSources(){
       for(const u of MUSIC_CANDIDATES){
         if (music.currentSrc && music.currentSrc.endsWith(u)) continue;
         music.src = u;
-        try { await music.play(); return true; } catch {}
+        try { await music.play(); return true; } catch(e) {}
       }
       return false;
     }
 
-    let fadeTimer=null;
-    function fadeTo(targetVol=Number(slider.value||1), ms=6000){
-      clearInterval(fadeTimer); music.volume=0;
-      const steps=Math.max(1,Math.round(ms/50)); let i=0;
-      fadeTimer=setInterval(()=>{ i++; music.volume=Math.min(targetVol,(i/steps)*targetVol); if(i>=steps) clearInterval(fadeTimer); },50);
+    // Start music immediately in the gesture call stack
+    function startMusicInGesture(){
+      try{
+        music.muted = false;
+        const p = music.play();
+        if (p && typeof p.then === 'function'){
+          p.then(()=>{
+            fadeTo(); controls.classList.add('show'); songName.textContent = "🎵 Now Playing: " + SONG_TITLE;
+          }).catch(async ()=>{
+            const ok = await tryFallbackSources();
+            if (ok){ fadeTo(); controls.classList.add('show'); songName.textContent = "🎵 Now Playing: " + SONG_TITLE; }
+          });
+        }else{
+          // older browsers
+          fadeTo(); controls.classList.add('show'); songName.textContent = "🎵 Now Playing: " + SONG_TITLE;
+        }
+      }catch(e){}
     }
 
-    async function playMusic(){
-      try{
-        music.muted=false;
-        await music.play();
-        fadeTo();
-        controls.classList.add('show');
-        document.getElementById('song-name').textContent = "🎵 Now Playing: " + SONG_TITLE;
-      }catch(err){
-        const ok = await tryFallbackSources();
-        if (ok){ fadeTo(); controls.classList.add('show'); }
-        else { console.warn('All music sources failed'); }
-      }
-    }
-    slider.addEventListener('input', ()=>{ music.volume=Number(slider.value); });
+    slider.addEventListener('input', ()=>{ music.volume = Number(slider.value); });
 
     /* ===== Knife + drips ===== */
     const knifeEl=document.getElementById('knife');
@@ -212,12 +219,14 @@
     }
 
     const stab=document.getElementById('sfx-stab');
-    function stabAndSwap(){
-      return new Promise(resolve=>{
-        const onPlay=()=>{ knifeEl.style.backgroundImage=`url(${BLOODY_KNIFE_URL})`; startDrips(); resolve(); };
-        stab.addEventListener('play', onPlay, {once:true});
-        stab.currentTime=0; stab.play().catch(()=>{ onPlay(); });
-      });
+    function playStabAndSwapInGesture(){
+      const onPlay=()=>{ knifeEl.style.backgroundImage=`url(${BLOODY_KNIFE_URL})`; startDrips(); stab.removeEventListener('play', onPlay); };
+      stab.addEventListener('play', onPlay, {once:true});
+      try{
+        stab.currentTime=0;
+        const p = stab.play();
+        if (p && typeof p.catch==='function'){ p.catch(()=>{ onPlay(); }); }
+      }catch(e){ onPlay(); }
     }
 
     /* ===== One-pass marquee (start on enter) ===== */
@@ -257,42 +266,47 @@
       requestAnimationFrame(step);
     }
 
-    /* ===== Enter flow ===== */
-    async function enter(){
-      if (gate.classList.contains('hidden')) return;
-      await stabAndSwap();
-      await playMusic();
-      site.classList.add('clear');   // unblur
-      gate.classList.add('hidden');  // hide overlay
-      initMarquee();                 // start marquee now
+    /* ===== Enter flow (sync in user-gesture) ===== */
+    let entered = false;
+    function startExperience(){
+      if (entered) return;
+      entered = true;
+
+      // 1) Start audio immediately in gesture stack
+      startMusicInGesture();
+
+      // 2) Play stab SFX and swap knife immediately
+      playStabAndSwapInGesture();
+
+      // 3) Reveal site now (CSS transitions handle blur-out)
+      site.classList.add('clear');
+      gate.classList.add('hidden');
+
+      // 4) Kick off marquee after layout settles
+      requestAnimationFrame(()=> initMarquee());
     }
 
-    // Bind robustly on the gate…
-    ['pointerdown','pointerup','click','touchstart','touchend','mousedown','mouseup'].forEach(evt=>{
-      gate.addEventListener(evt, (e)=>{ e.preventDefault(); enter(); }, {passive:false});
-      gateBtn.addEventListener(evt, (e)=>{ e.preventDefault(); enter(); }, {passive:false});
+    // Bind robustly on gate and button (do not preventDefault to keep gesture intact)
+    ['pointerdown','click','touchstart','mousedown','mouseup','pointerup','touchend'].forEach(evt=>{
+      gate.addEventListener(evt, startExperience, {passive:true});
+      gateBtn.addEventListener(evt, startExperience, {passive:true});
     });
-    // …and as a safety net, capture the very first gesture anywhere on the page
+
+    // Safety net: first gesture anywhere on the page (capture)
     const firstGesture = (e) => {
-      if (!gate.classList.contains('hidden')) {
-        e.preventDefault();
-        enter();
-      }
-      cleanup();
-    };
-    function cleanup(){
-      ['pointerdown','click','touchstart','keydown','mousedown'].forEach(ev=>{
+      if (!entered) startExperience();
+      // remove after first fire
+      ['pointerdown','click','touchstart','mousedown','keydown'].forEach(ev=>{
         document.removeEventListener(ev, firstGesture, true);
       });
-    }
-    ['pointerdown','click','touchstart','keydown','mousedown'].forEach(ev=>{
-      document.addEventListener(ev, firstGesture, true); // capture phase
+    };
+    ['pointerdown','click','touchstart','mousedown','keydown'].forEach(ev=>{
+      document.addEventListener(ev, firstGesture, true);
     });
-    // Keyboard fallback while gate is visible
+
+    // Keyboard accessibility while gate visible
     document.addEventListener('keydown', (e)=> {
-      if ((e.key==='Enter' || e.key===' ') && !gate.classList.contains('hidden')) {
-        e.preventDefault(); enter();
-      }
+      if ((e.key==='Enter' || e.key===' ') && !entered) startExperience();
     });
   });
   </script>
