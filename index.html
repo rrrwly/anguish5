@@ -17,11 +17,9 @@
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="theme-color" content="#000000" />
 
-  <!-- Pixel font for the gate text only -->
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
 
   <style>
-    /* Base layout */
     body{
       margin:0; display:flex; flex-direction:column; justify-content:center; align-items:center;
       height:95vh; background:#fff; color:#000; font-family:Arial, sans-serif;
@@ -29,16 +27,14 @@
     }
     @keyframes fadeIn{from{opacity:0}to{opacity:1}}
 
-    /* Blur until user enters */
     .site{ filter:blur(16px); opacity:.85; transition:filter 1200ms ease, opacity 1200ms ease; pointer-events:none; }
     .site.clear{ filter:blur(0); opacity:1; pointer-events:auto; }
 
-    /* Gate overlay (higher than everything, grabs clicks/taps/keys) */
+    /* Gate */
     .gate{
       position:fixed; inset:0; background:rgba(255,255,255,.6);
       z-index:100010; display:grid; place-items:center; cursor:none;
-      transition:opacity .8s ease, visibility .8s ease; opacity:1; visibility:visible;
-      pointer-events:auto;
+      transition:opacity .8s ease, visibility .8s ease; opacity:1; visibility:visible; pointer-events:auto;
     }
     .gate.hidden{ opacity:0; visibility:hidden; pointer-events:none; }
     .gate-text{
@@ -47,10 +43,14 @@
     }
     @keyframes pulse{0%{opacity:.6}50%{opacity:1}100%{opacity:.6}}
 
-    /* Marquee (one pass) */
-    .marquee-container{ width:25%; overflow:hidden; box-sizing:border-box; font-size:14px; white-space:nowrap; text-align:center; }
-    #track{ display:inline-block; white-space:nowrap; transform:translateX(100%); animation:scrollLeft 15s linear forwards; }
-    @keyframes scrollLeft{ from{transform:translateX(100%)} to{transform:translateX(0)} }
+    /* Marquee container stays hidden until we init it on enter */
+    .marquee-container{
+      overflow:hidden; box-sizing:border-box; font-size:14px;
+      white-space:nowrap; text-align:center; visibility:hidden;
+      margin-top:4px;
+    }
+    /* The moving inner track */
+    #track{ display:inline-block; white-space:nowrap; will-change:transform; }
 
     span{ font-size:14px; text-align:center; margin-top:10px; opacity:.85; }
 
@@ -95,9 +95,12 @@
       onerror="this.onerror=null; this.src='https://cdn.discordapp.com/attachments/1117356079051964446/1424607076667097158/ZBzQzuI.gif';"
     />
     <div>defeat</div>
-    <div class="marquee-container">
-      <div id="track">jord ryan matt saph maly tyler</div>
+
+    <!-- Marquee (one pass; initialized via JS after enter) -->
+    <div class="marquee-container" id="names">
+      <div id="track"><span id="namesText">jord ryan matt saph maly tyler</span></div>
     </div>
+
     <span>uneasy lies the head that wears the crown</span>
   </div>
 
@@ -112,20 +115,19 @@
     <source src="/assets/stab.mp3" type="audio/mpeg">
   </audio>
 
-  <!-- Click-to-enter gate (focusable for keyboard/iOS) -->
+  <!-- Click-to-enter gate -->
   <div id="gate" class="gate" role="button" aria-label="Click to enter" tabindex="0">
     <div class="gate-text">CLICK TO ENTER</div>
   </div>
 
   <script>
   document.addEventListener('DOMContentLoaded', () => {
-    /* Ensure correct initial state (blur ON, gate visible) */
     const site = document.getElementById('site');
     const gate = document.getElementById('gate');
     site.classList.remove('clear');
     gate.classList.remove('hidden');
 
-    /* Music */
+    /* ===== Music ===== */
     const music = document.getElementById('bg-music');
     const slider = document.getElementById('volume-slider');
     const controls = document.getElementById('music-controls');
@@ -140,7 +142,7 @@
     ];
     async function head(u){ try{ const r=await fetch(u,{method:'HEAD'}); return r.ok; }catch{ return false; } }
     async function resolveMusic(){ for(const u of MUSIC_CANDIDATES){ if(await head(u)){ music.src=u; music.load(); return true; } } return false; }
-    resolveMusic(); // prep before first gesture
+    resolveMusic();
 
     let fadeTimer=null;
     function fadeTo(targetVol=Number(slider.value||1), ms=6000){
@@ -154,7 +156,7 @@
     }
     slider.addEventListener('input', ()=>{ music.volume=Number(slider.value); });
 
-    /* Knife + drips */
+    /* ===== Knife + drips ===== */
     const knifeEl=document.getElementById('knife');
     const CLEAN_KNIFE_URL="/assets/knife-clean.png";
     const BLOODY_KNIFE_URL="/assets/knife.png";
@@ -194,13 +196,53 @@
       });
     }
 
-    /* Unified enter handler (click/tap/Enter) */
+    /* ===== One-pass marquee: start on enter and stop with all names visible ===== */
+    function initMarquee(){
+      const container = document.getElementById('names');
+      const track     = document.getElementById('track');
+      const textEl    = document.getElementById('namesText');
+
+      // measure text width safely
+      const ghost = textEl.cloneNode(true);
+      ghost.style.cssText = 'position:absolute; visibility:hidden; white-space:nowrap; left:-9999px; top:-9999px;';
+      document.body.appendChild(ghost);
+      const textW = Math.ceil(ghost.offsetWidth);
+      document.body.removeChild(ghost);
+
+      const maxW = Math.floor(window.innerWidth * 0.9);
+      const startW = Math.min(textW, maxW);   // scrolling window width
+      const endW   = Math.min(textW, maxW);   // width to keep after stop (shows as much as fits)
+
+      container.style.width = startW + 'px';
+      container.style.visibility = 'visible';
+
+      let x = startW;           // start just off the right edge
+      const speed = 60;         // px/sec
+      let last = performance.now();
+
+      function step(ts){
+        const dt = (ts - last) / 1000; last = ts;
+        x -= speed * dt;
+        if (x <= 0){
+          track.style.transform = 'translateX(0px)';
+          container.style.width = endW + 'px';
+          return; // stop
+        }
+        track.style.transform = `translateX(${x}px)`;
+        requestAnimationFrame(step);
+      }
+      track.style.transform = `translateX(${x}px)`;
+      requestAnimationFrame(step);
+    }
+
+    /* ===== Enter ===== */
     async function enter(){
       if (gate.classList.contains('hidden')) return;
       await stabAndSwap();
       await playMusic();
-      site.classList.add('clear');      // remove blur
-      gate.classList.add('hidden');     // hide overlay
+      site.classList.add('clear');
+      gate.classList.add('hidden');
+      initMarquee();             // <-- start the marquee now, so it's visible
     }
 
     // Bind robustly
@@ -209,7 +251,6 @@
     });
     gate.addEventListener('touchstart', (e)=>{ e.preventDefault(); enter(); }, {passive:false});
     gate.addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' ') { e.preventDefault(); enter(); } });
-
   });
   </script>
 </body>
